@@ -146,8 +146,17 @@ public class BPlusTree {
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
         // TODO(proj2): implement
+        LeafNode leafNode = root.get(key);
+        List<DataBox> keys = leafNode.getKeys();
+        List<RecordId> rIds = leafNode.getRids();
+        assert keys.size() == rIds.size();
 
-        return Optional.empty();
+        int index = Collections.binarySearch(keys, key);
+        if (index < 0) {
+            return Optional.empty();
+        }
+
+        return Optional.of(rIds.get(index));
     }
 
     /**
@@ -341,7 +350,7 @@ public class BPlusTree {
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
         List<String> strings = new ArrayList<>();
-        strings.add("digraph g {" );
+        strings.add("digraph g {");
         strings.add("  node [shape=record, height=0.1];");
         strings.add(root.toDot());
         strings.add("}");
