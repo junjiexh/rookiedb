@@ -9,6 +9,7 @@ import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.RecordId;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -270,5 +271,57 @@ abstract class BPlusNode {
         } finally {
             p.unpin();
         }
+    }
+
+
+    /**
+     * Given a list ys sorted in ascending order, numLessThanEqual(x, ys) returns
+     * the number of elements in ys that are less than or equal to x. For
+     * example,
+     *
+     *   numLessThanEqual(0, Arrays.asList(1, 2, 3, 4, 5)) == 0
+     *   numLessThanEqual(1, Arrays.asList(1, 2, 3, 4, 5)) == 1
+     *   numLessThanEqual(2, Arrays.asList(1, 2, 3, 4, 5)) == 2
+     *   numLessThanEqual(3, Arrays.asList(1, 2, 3, 4, 5)) == 3
+     *   numLessThanEqual(4, Arrays.asList(1, 2, 3, 4, 5)) == 4
+     *   numLessThanEqual(5, Arrays.asList(1, 2, 3, 4, 5)) == 5
+     *   numLessThanEqual(6, Arrays.asList(1, 2, 3, 4, 5)) == 5
+     *
+     * This helper function is useful when we're navigating down a B+ tree and
+     * need to decide which child to visit. For example, imagine an index node
+     * with the following 4 keys and 5 children pointers:
+     *
+     *     +---+---+---+---+
+     *     | a | b | c | d |
+     *     +---+---+---+---+
+     *    /    |   |   |    \
+     *   0     1   2   3     4
+     *
+     * If we're searching the tree for value c, then we need to visit child 3.
+     * Not coincidentally, there are also 3 values less than or equal to c (i.e.
+     * a, b, c).
+     */
+    static <T extends Comparable<T>> int numLessThanEqual(T x, List<T> ys) {
+        int n = 0;
+        for (T y : ys) {
+            if (y.compareTo(x) <= 0) {
+                ++n;
+            } else {
+                break;
+            }
+        }
+        return n;
+    }
+
+    static <T extends Comparable<T>> int numLessThan(T x, List<T> ys) {
+        int n = 0;
+        for (T y : ys) {
+            if (y.compareTo(x) < 0) {
+                ++n;
+            } else {
+                break;
+            }
+        }
+        return n;
     }
 }

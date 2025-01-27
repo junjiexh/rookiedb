@@ -9,6 +9,8 @@ import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.RecordId;
 
+import javax.swing.text.html.Option;
+import javax.xml.crypto.Data;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -160,9 +162,29 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.put.
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        // TODO(proj2): implement
+        int insertIndex = numLessThanEqual(key, keys);
+        keys.add(insertIndex, key);
+        rids.add(insertIndex, rid);
+        if (rids.size() <= metadata.getOrder() * 2) {
+            return Optional.empty();
+        }
 
-        return Optional.empty();
+        // overflows
+        // (i) split the key and rids
+        List<DataBox> subList = keys.subList(metadata.getOrder(), keys.size());
+        List<RecordId> subList2 = rids.subList(metadata.getOrder(), rids.size());
+        List<DataBox> splitKeys = new ArrayList<>(subList);
+        List<RecordId> splitRids = new ArrayList<>(subList2);
+        subList.clear();
+        subList2.clear();
+
+        // (ii) create a new leaf node
+        LeafNode newLeaf = new LeafNode(metadata, bufferManager, splitKeys, splitRids, rightSibling, treeContext);
+        long leafPageNum = newLeaf.getPage().getPageNum();
+        this.rightSibling = Optional.of(leafPageNum);
+
+        sync();
+        return Optional.of(Pair.of(splitKeys.get(0), leafPageNum));
     }
 
     // See BPlusNode.bulkLoad.
