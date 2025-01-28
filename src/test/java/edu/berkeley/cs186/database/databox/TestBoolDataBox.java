@@ -8,7 +8,7 @@ import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.*;
 
-@Category({Proj99Tests.class, SystemTests.class})
+@Category({ Proj99Tests.class, SystemTests.class })
 public class TestBoolDataBox {
     @Test
     public void testType() {
@@ -44,7 +44,7 @@ public class TestBoolDataBox {
 
     @Test
     public void testToAndFromBytes() {
-        for (boolean b : new boolean[] {true, false}) {
+        for (boolean b : new boolean[] { true, false }) {
             BoolDataBox d = new BoolDataBox(b);
             byte[] bytes = d.toBytes();
             assertEquals(d, DataBox.fromBytes(ByteBuffer.wrap(bytes), Type.boolType()));

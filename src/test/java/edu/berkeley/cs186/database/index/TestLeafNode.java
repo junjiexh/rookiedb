@@ -27,6 +27,7 @@ import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 
+import javax.swing.text.html.Option;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -148,6 +149,31 @@ public class TestLeafNode {
                 rid = new RecordId(j, (short) j);
                 assertEquals(Optional.of(rid), leaf.getKey(key));
             }
+        }
+    }
+
+    @Test
+    @Category(StudentTests.class)
+    public void testOverflowPuts() {
+        int d = 5;
+        setBPlusTreeMetadata(Type.intType(), d);
+        LeafNode leaf = getEmptyLeaf(Optional.empty());
+
+        for (int i = 0; i < 2 * d; ++i) {
+            DataBox key = new IntDataBox(i);
+            RecordId rid = new RecordId(i, (short) i);
+            leaf.put(key, rid);
+        }
+
+        int overflowKey = 2 * d;
+        Optional<Pair<DataBox, Long>> split = leaf.put(new IntDataBox(overflowKey), new RecordId(overflowKey, (short) overflowKey));
+        assertNotEquals(Optional.empty(), split);
+        LeafNode splitNode = LeafNode.fromBytes(metadata, bufferManager, treeContext, split.get().getSecond());
+        for (int i = 0; i < d; ++i) {
+            assertEquals(Optional.of(new RecordId(i, (short) i)), leaf.getKey(new IntDataBox(i)));
+        }
+        for (int i = d; i <= 2 * d; ++i) {
+            assertEquals(Optional.of(new RecordId(i, (short) i)), splitNode.getKey(new IntDataBox(i)));
         }
     }
 
