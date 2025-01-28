@@ -103,6 +103,7 @@ class InnerNode extends BPlusNode {
         BPlusNode child = getChild(index);
         Optional<Pair<DataBox, Long>> split = child.put(key, rid);
         if (!split.isPresent()) {
+            sync();
             return Optional.empty();
         }
 

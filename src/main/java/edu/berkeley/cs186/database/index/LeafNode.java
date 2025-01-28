@@ -162,10 +162,14 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.put.
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        int insertIndex = numLessThanEqual(key, keys);
+        int insertIndex = numLessThan(key, keys);
+        if (insertIndex < keys.size() && keys.get(insertIndex).equals(key)) {
+            throw new BPlusTreeException("Key already exists");
+        }
         keys.add(insertIndex, key);
         rids.add(insertIndex, rid);
         if (rids.size() <= metadata.getOrder() * 2) {
+            sync();
             return Optional.empty();
         }
 
