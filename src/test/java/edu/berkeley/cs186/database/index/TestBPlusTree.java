@@ -122,6 +122,25 @@ public class TestBPlusTree {
 
     @Test
     @Category(Proj2Tests.class)
+    public void testScanAll() {
+        BPlusTree tree = getBPlusTree(Type.intType(), 1);
+        tree.put(new IntDataBox(2), new RecordId(2, (short) 2));
+        tree.put(new IntDataBox(5), new RecordId(5, (short) 5));
+        tree.put(new IntDataBox(4), new RecordId(4, (short) 4));
+        tree.put(new IntDataBox(1), new RecordId(1, (short) 1));
+        tree.put(new IntDataBox(3), new RecordId(3, (short) 3));
+
+        Iterator<RecordId> iter = tree.scanAll();
+        assertEquals(new RecordId(1, (short) 1), iter.next());
+        assertEquals(new RecordId(2, (short) 2), iter.next());
+        assertEquals(new RecordId(3, (short) 3), iter.next());
+        assertEquals(new RecordId(4, (short) 4), iter.next());
+        assertEquals(new RecordId(5, (short) 5), iter.next());
+        assertThrows(NoSuchElementException.class, iter::next);
+    }
+
+    @Test
+    @Category(Proj2Tests.class)
     public void testSimplePut() {
         BPlusTree tree = getBPlusTree(Type.intType(), 1);
         assertEquals("()", tree.toSexp());
