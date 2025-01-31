@@ -201,9 +201,15 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
-        // TODO(proj2): implement
+        int index = keys.indexOf(key);
+        Optional<RecordId> recordId = index == -1 ? Optional.empty() : Optional.of(rids.get(index));
 
-        return;
+        if (!recordId.isPresent()) {
+            return;
+        }
+        rids.remove(index);
+        keys.remove(index);
+        sync();
     }
 
     // Iterators ///////////////////////////////////////////////////////////////

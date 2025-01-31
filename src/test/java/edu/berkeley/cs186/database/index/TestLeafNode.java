@@ -243,6 +243,35 @@ public class TestLeafNode {
             assertEquals(Optional.empty(), leaf.getKey(key));
         }
     }
+    @Test
+    @Category(Proj2Tests.class)
+    public void testSimpleRemoveFromDisk() {
+        int d = 5;
+        setBPlusTreeMetadata(Type.intType(), d);
+        LeafNode leaf = getEmptyLeaf(Optional.empty());
+
+        // Insert entries.
+        for (int i = 0; i < 2 * d; ++i) {
+            IntDataBox key = new IntDataBox(i);
+            RecordId rid = new RecordId(i, (short) i);
+            leaf.put(key, rid);
+            assertEquals(Optional.of(rid), leaf.getKey(key));
+        }
+
+        // Remove entries.
+        for (int i = 0; i < 2 * d; ++i) {
+            IntDataBox key = new IntDataBox(i);
+            leaf.remove(key);
+        }
+
+        long pageNum = leaf.getPage().getPageNum();
+        LeafNode fromDisk = LeafNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
+
+        for (int i = 0; i < 2 * d; ++i) {
+            IntDataBox key = new IntDataBox(i);
+            assertEquals(Optional.empty(), fromDisk.getKey(key));
+        }
+    }
 
     @Test
     @Category(PublicTests.class)
