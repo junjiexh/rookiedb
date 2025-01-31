@@ -113,16 +113,17 @@ class InnerNode extends BPlusNode {
         children.add(index + 1, split.get().getSecond());
 
         // not overflows
-        if (children.size() <= metadata.getOrder() * 2) {
+        if (keys.size() <= metadata.getOrder() * 2) {
+            sync();
             return Optional.empty();
         }
 
         // overflows, split the InnerNode
         List<DataBox> subList = keys.subList(metadata.getOrder(), keys.size());
         List<DataBox> splitKeys = new ArrayList<>(subList);
-        subList.clear();
         List<Long> subList2 = children.subList(metadata.getOrder() + 1, children.size());
         List<Long> splitChildren = new ArrayList<>(subList2);
+        subList.clear();
         subList2.clear();
 
         DataBox splitKey = splitKeys.remove(0);

@@ -6,6 +6,7 @@ import edu.berkeley.cs186.database.concurrency.LockContext;
 import edu.berkeley.cs186.database.concurrency.LockType;
 import edu.berkeley.cs186.database.concurrency.LockUtil;
 import edu.berkeley.cs186.database.databox.DataBox;
+import edu.berkeley.cs186.database.databox.IntDataBox;
 import edu.berkeley.cs186.database.databox.Type;
 import edu.berkeley.cs186.database.io.DiskSpaceManager;
 import edu.berkeley.cs186.database.memory.BufferManager;
@@ -145,7 +146,6 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         LeafNode leafNode = root.get(key);
         List<DataBox> keys = leafNode.getKeys();
         List<RecordId> rIds = leafNode.getRids();
@@ -262,12 +262,19 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         // Note: You should NOT update the root variable directly.
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
+        Optional<Pair<DataBox, Long>> rootSplit = root.put(key, rid);
+        if (!rootSplit.isPresent()) {
+            return;
+        }
 
-        return;
+        InnerNode newRoot = new InnerNode(metadata, bufferManager,
+                Arrays.asList(rootSplit.get().getFirst()),
+                Arrays.asList(root.getPage().getPageNum(), rootSplit.get().getSecond()), lockContext
+        );
+        updateRoot(newRoot);
     }
 
     /**

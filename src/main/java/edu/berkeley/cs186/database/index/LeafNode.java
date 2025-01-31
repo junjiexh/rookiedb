@@ -168,7 +168,7 @@ class LeafNode extends BPlusNode {
         }
         keys.add(insertIndex, key);
         rids.add(insertIndex, rid);
-        if (rids.size() <= metadata.getOrder() * 2) {
+        if (keys.size() <= metadata.getOrder() * 2) {
             sync();
             return Optional.empty();
         }

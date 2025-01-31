@@ -1,10 +1,7 @@
 package edu.berkeley.cs186.database.index;
 
 import edu.berkeley.cs186.database.TimeoutScaling;
-import edu.berkeley.cs186.database.categories.HiddenTests;
-import edu.berkeley.cs186.database.categories.Proj2Tests;
-import edu.berkeley.cs186.database.categories.PublicTests;
-import edu.berkeley.cs186.database.categories.SystemTests;
+import edu.berkeley.cs186.database.categories.*;
 import edu.berkeley.cs186.database.common.Pair;
 import edu.berkeley.cs186.database.concurrency.DummyLockContext;
 import edu.berkeley.cs186.database.concurrency.LockContext;
@@ -16,6 +13,7 @@ import edu.berkeley.cs186.database.io.MemoryDiskSpaceManager;
 import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.ClockEvictionPolicy;
 import edu.berkeley.cs186.database.recovery.DummyRecoveryManager;
+import edu.berkeley.cs186.database.table.Record;
 import edu.berkeley.cs186.database.table.RecordId;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +25,7 @@ import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
@@ -204,6 +203,14 @@ public class TestInnerNode {
         assertEquals(innerChildren, inner.getChildren());
     }
 
+    private void checkLeafMatchesExpectations(long leafNum, List<Integer> nums) {
+        LeafNode leaf = getLeaf(leafNum);
+        List<DataBox> keys = nums.stream().map(IntDataBox::new).collect(Collectors.toList());
+        List<RecordId> rids = nums.stream().map((num) -> new RecordId(num, (short) num.intValue())).collect(Collectors.toList());
+        assertEquals(keys, leaf.getKeys());
+        assertEquals(rids, leaf.getRids());
+    }
+
     // Tests ///////////////////////////////////////////////////////////////////
     @Test
     @Category(PublicTests.class)
@@ -261,6 +268,66 @@ public class TestInnerNode {
         keys2.add(0, key);
         rids2.add(0, rid);
         checkTreeMatchesExpectations();
+    }
+
+    @Test
+    @Category(StudentTests.class)
+    public void testOverflowPuts() {
+        IntDataBox key = null;
+        RecordId rid = null;
+//                               inner
+//                               +----+----+----+----+
+//                               | 10 | 20 |    |    |
+//                               +----+----+----+----+
+//                              /     |     \
+//                         ____/      |      \____
+//                        /           |           \
+//   +----+----+----+----+  +----+----+----+----+  +----+----+----+----+
+//   |  1 |  2 |  3 |    |  | 11 | 12 | 13 |    |  | 21 | 22 |    |    |
+//   +----+----+----+----+  +----+----+----+----+  +----+----+----+----+
+//   leaf0                  leaf1                  leaf2
+//                               inner2
+//                               +----+----+----+----+
+//                               | 25 | 27 |    |    |
+//                               +----+----+----+----+
+//                              /     |     \
+//                         ____/      |      \____
+//                        /           |           \
+//   +----+----+----+----+  +----+----+----+----+  +----+----+----+----+
+//   | 23 | 24 |    |    |  | 25 | 26 |    |    |  | 27 | 28 | 29 |    |
+//   +----+----+----+----+  +----+----+----+----+  +----+----+----+----+
+//   leaf3                  leaf4                  leaf5
+
+        int d = metadata.getOrder();
+        for (int i = 24; i < 24 + 5; ++i) {
+            key = new IntDataBox(i);
+            rid = new RecordId(i, (short) i);
+            inner.put(key, rid);
+        }
+
+        long leaf3 = inner.getChildren().get(3);
+        long leaf4 = inner.getChildren().get(4);
+        checkLeafMatchesExpectations(leaf3, Arrays.asList(23, 24));
+        checkLeafMatchesExpectations(leaf4, Arrays.asList(25, 26, 27, 28));
+
+        // after inner node split
+        Optional<Pair<DataBox, Long>> innerSplit = inner.put(new IntDataBox(29), new RecordId(29, (short) 29));
+        assertNotEquals(Optional.empty(), innerSplit);
+        InnerNode inner2 = InnerNode.fromBytes(metadata, bufferManager, treeContext, innerSplit.get().getSecond());
+        assertEquals(new IntDataBox(23), innerSplit.get().getFirst());
+
+        long leaf5 = inner2.getChildren().get(2);
+        checkLeafMatchesExpectations(leaf0, Arrays.asList(1, 2, 3));
+        checkLeafMatchesExpectations(leaf1, Arrays.asList(11, 12, 13));
+        checkLeafMatchesExpectations(leaf2, Arrays.asList(21, 22));
+        checkLeafMatchesExpectations(leaf3, Arrays.asList(23, 24));
+        checkLeafMatchesExpectations(leaf4, Arrays.asList(25, 26));
+        checkLeafMatchesExpectations(leaf5, Arrays.asList(27, 28, 29));
+
+        List<IntDataBox> inner2Keys = Arrays.asList(new IntDataBox(25), new IntDataBox(27));
+        List<Long> inner2Children = Arrays.asList(leaf3, leaf4, leaf5);
+        assertEquals(inner2Keys, inner2.getKeys());
+        assertEquals(inner2Children, inner2.getChildren());
     }
 
     @Test
