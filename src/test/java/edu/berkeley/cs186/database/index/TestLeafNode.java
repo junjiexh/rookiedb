@@ -101,7 +101,7 @@ public class TestLeafNode {
     }
 
     @Test
-    @Category(PublicTests.class)
+    @Category({PublicTests.class, Proj2Tests.class})
     public void testSmallBulkLoad() {
         // Bulk loads with 60% of a leaf's worth, then checks that the
         // leaf didn't split.
