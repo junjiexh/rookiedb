@@ -482,4 +482,17 @@ public class TestInnerNode {
             assertEquals(inner, parsed);
         }
     }
+
+    @Test
+    @Category(Proj2Tests.class)
+    public void testSimpleBulkLoad() {
+        ArrayList<Pair<DataBox, RecordId>> data = new ArrayList<>();
+        int len = 5;
+        for (int i = 24; i < 24 + len; ++i) {
+            data.add(new Pair<>(new IntDataBox(i), new RecordId(i, (short) i)));
+        }
+        inner.bulkLoad(data.iterator(), 0.75f);
+        assertEquals("(((1 (1 1)) (2 (2 2)) (3 (3 3))) 10 ((11 (11 11)) (12 (12 12)) (13 (13 13))) 20 ((21 (21 21))" +
+                " (22 (22 22)) (23 (23 23))) 24 ((24 (24 24)) (25 (25 25)) (26 (26 26))) 27 ((27 (27 27))))", inner.toSexp());
+    }
 }

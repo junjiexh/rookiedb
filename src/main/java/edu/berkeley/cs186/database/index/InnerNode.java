@@ -110,34 +110,46 @@ class InnerNode extends BPlusNode {
         keys.add(index, newKey);
         children.add(index + 1, split.get().getSecond());
 
-        // not overflows
+        // check overflow
         if (keys.size() <= metadata.getOrder() * 2) {
-            sync();
             return Optional.empty();
         }
 
-        // overflows, split the InnerNode
-        List<DataBox> subList = keys.subList(metadata.getOrder(), keys.size());
-        List<DataBox> splitKeys = new ArrayList<>(subList);
-        List<Long> subList2 = children.subList(metadata.getOrder() + 1, children.size());
-        List<Long> splitChildren = new ArrayList<>(subList2);
-        subList.clear();
-        subList2.clear();
+        Pair<DataBox, Long> splitResult = this.split();
 
-        DataBox splitKey = splitKeys.remove(0);
-        InnerNode splitInnerNode = new InnerNode(metadata, bufferManager, splitKeys, splitChildren, treeContext);
-        Long splitNumber = splitInnerNode.getPage().getPageNum();
         sync();
-        return Optional.of(Pair.of(splitKey, splitNumber));
+        return Optional.of(splitResult);
     }
+
 
     // See BPlusNode.bulkLoad.
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor) {
-        // TODO(proj2): implement
+        // try to bulkLoad the rightmost child
+        while (data.hasNext() && !isOverflow()) {
+            BPlusNode child = getChild(children.size() - 1);
+            Optional<Pair<DataBox, Long>> childSplit = child.bulkLoad(data, fillFactor);
+            if (!childSplit.isPresent()) {
+                break;
+            }
 
-        return Optional.empty();
+            // add this childSplit to children
+            DataBox newKey = childSplit.get().getFirst();
+            keys.add(newKey);
+            children.add(childSplit.get().getSecond());
+        }
+
+        if (!isOverflow()) {
+            sync();
+            return Optional.empty();
+        }
+
+        // overflow, split the node
+        Pair<DataBox, Long> splitResult = this.split();
+
+        sync();
+        return Optional.of(splitResult);
     }
 
     // See BPlusNode.remove.
@@ -157,6 +169,27 @@ class InnerNode extends BPlusNode {
     private BPlusNode getChild(int i) {
         long pageNum = children.get(i);
         return BPlusNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
+    }
+
+    private boolean isOverflow() {
+        return keys.size() > metadata.getOrder() * 2;
+    }
+
+    private Pair<DataBox, Long> split() {
+        // check overflow
+        assert isOverflow();
+
+        List<DataBox> subList = keys.subList(metadata.getOrder(), keys.size());
+        List<DataBox> splitKeys = new ArrayList<>(subList);
+        List<Long> subList2 = children.subList(metadata.getOrder() + 1, children.size());
+        List<Long> splitChildren = new ArrayList<>(subList2);
+        subList.clear();
+        subList2.clear();
+
+        DataBox splitKey = splitKeys.remove(0);
+        InnerNode splitInnerNode = new InnerNode(metadata, bufferManager, splitKeys, splitChildren, treeContext);
+        Long splitNumber = splitInnerNode.getPage().getPageNum();
+        return Pair.of(splitKey, splitNumber);
     }
 
     private void sync() {

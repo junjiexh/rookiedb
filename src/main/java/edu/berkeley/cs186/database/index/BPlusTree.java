@@ -296,12 +296,26 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         // Note: You should NOT update the root variable directly.
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
 
-        return;
+        // check if the tree empty
+        assert root instanceof LeafNode;
+        LeafNode leafNode = (LeafNode) root;
+        assert leafNode.isEmpty();
+
+        while (data.hasNext()) {
+            Optional<Pair<DataBox, Long>> rootSplit = root.bulkLoad(data, fillFactor);
+            if (!rootSplit.isPresent()) {
+                return;
+            }
+
+            List<DataBox> keys = Collections.singletonList(rootSplit.get().getFirst());
+            List<Long> children = Arrays.asList(root.getPage().getPageNum(), rootSplit.get().getSecond());
+            InnerNode newRoot = new InnerNode(metadata, bufferManager, keys, children, lockContext);
+            updateRoot(newRoot);
+        }
     }
 
     /**

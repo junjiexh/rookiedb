@@ -193,7 +193,6 @@ class LeafNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
                                                   float fillFactor) {
-        // TODO: how do we know the data being iterated is sorted?
         int top = (int) Math.ceil(metadata.getOrder() * 2 * fillFactor);
         for (int i = keys.size(); i < top && data.hasNext(); i++) {
             Pair<DataBox, RecordId> next = data.next();
@@ -202,6 +201,7 @@ class LeafNode extends BPlusNode {
         }
 
         if (!data.hasNext()) {
+            sync();
             return Optional.empty();
         }
 
@@ -255,6 +255,10 @@ class LeafNode extends BPlusNode {
     Iterator<RecordId> scanGreaterEqual(DataBox key) {
         int index = InnerNode.numLessThan(key, keys);
         return rids.subList(index, rids.size()).iterator();
+    }
+
+    boolean isEmpty() {
+        return keys.isEmpty() && rids.isEmpty();
     }
 
     // Helpers /////////////////////////////////////////////////////////////////

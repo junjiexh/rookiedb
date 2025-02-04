@@ -129,6 +129,23 @@ public class TestLeafNode {
     }
 
     @Test
+    @Category(Proj2Tests.class)
+    public void testBulkLoadOverflow() {
+        int d = 5;
+        float fillFactor = 0.8f;
+        setBPlusTreeMetadata(Type.intType(), d);
+        LeafNode leaf = getEmptyLeaf(Optional.empty());
+
+        List<Pair<DataBox, RecordId>> data = new ArrayList<>();
+        for (int i = 0; i < (int) Math.ceil(2 * d * 0.8) + 1; ++i) {
+            DataBox key = new IntDataBox(i);
+            RecordId rid = new RecordId(i, (short) i);
+            data.add(i, new Pair<>(key, rid));
+        }
+        assertTrue(leaf.bulkLoad(data.iterator(), fillFactor).isPresent());
+    }
+
+    @Test
     @Category(PublicTests.class)
     public void testNoOverflowPuts() {
         int d = 5;
