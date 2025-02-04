@@ -97,59 +97,63 @@ class InnerNode extends BPlusNode {
     // else Optional.empty()
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        int index = numLessThanEqual(key, keys); // must be lessThanEqual, because range is left inclusive
-        BPlusNode child = getChild(index);
-        Optional<Pair<DataBox, Long>> split = child.put(key, rid);
-        if (!split.isPresent()) {
+        try {
+            int index = numLessThanEqual(key, keys); // must be lessThanEqual, because range is left inclusive
+            BPlusNode child = getChild(index);
+            Optional<Pair<DataBox, Long>> split = child.put(key, rid);
+            if (!split.isPresent()) {
+                return Optional.empty();
+            }
+
+            // insert the new split
+            DataBox newKey = split.get().getFirst();
+            keys.add(index, newKey);
+            children.add(index + 1, split.get().getSecond());
+
+            // check overflow
+            if (keys.size() <= metadata.getOrder() * 2) {
+                return Optional.empty();
+            }
+
+            Pair<DataBox, Long> splitResult = this.split();
+
+            return Optional.of(splitResult);
+        } finally {
             sync();
-            return Optional.empty();
         }
-
-        // insert the new split
-        DataBox newKey = split.get().getFirst();
-        keys.add(index, newKey);
-        children.add(index + 1, split.get().getSecond());
-
-        // check overflow
-        if (keys.size() <= metadata.getOrder() * 2) {
-            return Optional.empty();
-        }
-
-        Pair<DataBox, Long> splitResult = this.split();
-
-        sync();
-        return Optional.of(splitResult);
     }
 
 
     // See BPlusNode.bulkLoad.
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
-            float fillFactor) {
+                                                  float fillFactor) {
         // try to bulkLoad the rightmost child
-        while (data.hasNext() && !isOverflow()) {
-            BPlusNode child = getChild(children.size() - 1);
-            Optional<Pair<DataBox, Long>> childSplit = child.bulkLoad(data, fillFactor);
-            if (!childSplit.isPresent()) {
-                break;
+        try {
+            while (data.hasNext() && !isOverflow()) {
+                BPlusNode child = getChild(children.size() - 1);
+                Optional<Pair<DataBox, Long>> childSplit = child.bulkLoad(data, fillFactor);
+                if (!childSplit.isPresent()) {
+                    break;
+                }
+
+                // add this childSplit to children
+                DataBox newKey = childSplit.get().getFirst();
+                keys.add(newKey);
+                children.add(childSplit.get().getSecond());
             }
 
-            // add this childSplit to children
-            DataBox newKey = childSplit.get().getFirst();
-            keys.add(newKey);
-            children.add(childSplit.get().getSecond());
-        }
+            if (!isOverflow()) {
+                return Optional.empty();
+            }
 
-        if (!isOverflow()) {
+            // overflow, split the node
+            Pair<DataBox, Long> splitResult = this.split();
+
+            return Optional.of(splitResult);
+        } finally {
             sync();
-            return Optional.empty();
         }
-
-        // overflow, split the node
-        Pair<DataBox, Long> splitResult = this.split();
-
-        sync();
-        return Optional.of(splitResult);
     }
 
     // See BPlusNode.remove.
@@ -352,7 +356,7 @@ class InnerNode extends BPlusNode {
      * Loads an inner node from page `pageNum`.
      */
     public static InnerNode fromBytes(BPlusTreeMetadata metadata,
-            BufferManager bufferManager, LockContext treeContext, long pageNum) {
+                                      BufferManager bufferManager, LockContext treeContext, long pageNum) {
         Page page = bufferManager.fetchPage(treeContext, pageNum);
         Buffer buf = page.getBuffer();
 
