@@ -101,7 +101,7 @@ public class TestLeafNode {
     }
 
     @Test
-    @Category(PublicTests.class)
+    @Category({PublicTests.class, Proj2Tests.class})
     public void testSmallBulkLoad() {
         // Bulk loads with 60% of a leaf's worth, then checks that the
         // leaf didn't split.
@@ -126,6 +126,23 @@ public class TestLeafNode {
         }
         assertFalse(iter.hasNext());
         assertFalse(expected.hasNext());
+    }
+
+    @Test
+    @Category(Proj2Tests.class)
+    public void testBulkLoadOverflow() {
+        int d = 5;
+        float fillFactor = 0.8f;
+        setBPlusTreeMetadata(Type.intType(), d);
+        LeafNode leaf = getEmptyLeaf(Optional.empty());
+
+        List<Pair<DataBox, RecordId>> data = new ArrayList<>();
+        for (int i = 0; i < (int) Math.ceil(2 * d * 0.8) + 1; ++i) {
+            DataBox key = new IntDataBox(i);
+            RecordId rid = new RecordId(i, (short) i);
+            data.add(i, new Pair<>(key, rid));
+        }
+        assertTrue(leaf.bulkLoad(data.iterator(), fillFactor).isPresent());
     }
 
     @Test
@@ -241,6 +258,35 @@ public class TestLeafNode {
             IntDataBox key = new IntDataBox(i);
             leaf.remove(key);
             assertEquals(Optional.empty(), leaf.getKey(key));
+        }
+    }
+    @Test
+    @Category(Proj2Tests.class)
+    public void testSimpleRemoveFromDisk() {
+        int d = 5;
+        setBPlusTreeMetadata(Type.intType(), d);
+        LeafNode leaf = getEmptyLeaf(Optional.empty());
+
+        // Insert entries.
+        for (int i = 0; i < 2 * d; ++i) {
+            IntDataBox key = new IntDataBox(i);
+            RecordId rid = new RecordId(i, (short) i);
+            leaf.put(key, rid);
+            assertEquals(Optional.of(rid), leaf.getKey(key));
+        }
+
+        // Remove entries.
+        for (int i = 0; i < 2 * d; ++i) {
+            IntDataBox key = new IntDataBox(i);
+            leaf.remove(key);
+        }
+
+        long pageNum = leaf.getPage().getPageNum();
+        LeafNode fromDisk = LeafNode.fromBytes(metadata, bufferManager, treeContext, pageNum);
+
+        for (int i = 0; i < 2 * d; ++i) {
+            IntDataBox key = new IntDataBox(i);
+            assertEquals(Optional.empty(), fromDisk.getKey(key));
         }
     }
 

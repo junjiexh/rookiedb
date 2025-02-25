@@ -154,9 +154,7 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.getLeftmostLeaf.
     @Override
     public LeafNode getLeftmostLeaf() {
-        // TODO(proj2): implement
-
-        return null;
+        return this;
     }
 
     // See BPlusNode.put.
@@ -194,18 +192,44 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.bulkLoad.
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
-            float fillFactor) {
-        // TODO(proj2): implement
+                                                  float fillFactor) {
+        int top = (int) Math.ceil(metadata.getOrder() * 2 * fillFactor);
+        for (int i = keys.size(); i < top && data.hasNext(); i++) {
+            Pair<DataBox, RecordId> next = data.next();
+            keys.add(i, next.getFirst());
+            rids.add(i, next.getSecond());
+        }
 
-        return Optional.empty();
+        if (!data.hasNext()) {
+            sync();
+            return Optional.empty();
+        }
+
+        // overflows
+        Pair<DataBox, RecordId> next = data.next();
+        List<DataBox> splitKeys = Collections.singletonList(next.getFirst());
+        List<RecordId> splitRids = Collections.singletonList(next.getSecond());
+        // create a new leaf node
+        LeafNode newLeaf = new LeafNode(metadata, bufferManager, splitKeys, splitRids, rightSibling, treeContext);
+        long leafPageNum = newLeaf.getPage().getPageNum();
+        this.rightSibling = Optional.of(leafPageNum);
+
+        sync();
+        return Optional.of(Pair.of(splitKeys.get(0), leafPageNum));
     }
 
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
-        // TODO(proj2): implement
+        int index = keys.indexOf(key);
+        Optional<RecordId> recordId = index == -1 ? Optional.empty() : Optional.of(rids.get(index));
 
-        return;
+        if (!recordId.isPresent()) {
+            return;
+        }
+        rids.remove(index);
+        keys.remove(index);
+        sync();
     }
 
     // Iterators ///////////////////////////////////////////////////////////////
@@ -231,6 +255,10 @@ class LeafNode extends BPlusNode {
     Iterator<RecordId> scanGreaterEqual(DataBox key) {
         int index = InnerNode.numLessThan(key, keys);
         return rids.subList(index, rids.size()).iterator();
+    }
+
+    boolean isEmpty() {
+        return keys.isEmpty() && rids.isEmpty();
     }
 
     // Helpers /////////////////////////////////////////////////////////////////

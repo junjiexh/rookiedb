@@ -210,9 +210,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        return new BPlusTreeIterator();
     }
 
     /**
@@ -243,9 +241,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        return new BPlusTreeIterator(key);
     }
 
     /**
@@ -300,12 +296,26 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         // Note: You should NOT update the root variable directly.
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
 
-        return;
+        // check if the tree empty
+        assert root instanceof LeafNode;
+        LeafNode leafNode = (LeafNode) root;
+        assert leafNode.isEmpty();
+
+        while (data.hasNext()) {
+            Optional<Pair<DataBox, Long>> rootSplit = root.bulkLoad(data, fillFactor);
+            if (!rootSplit.isPresent()) {
+                return;
+            }
+
+            List<DataBox> keys = Collections.singletonList(rootSplit.get().getFirst());
+            List<Long> children = Arrays.asList(root.getPage().getPageNum(), rootSplit.get().getSecond());
+            InnerNode newRoot = new InnerNode(metadata, bufferManager, keys, children, lockContext);
+            updateRoot(newRoot);
+        }
     }
 
     /**
@@ -324,9 +334,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
-
-        return;
+        root.remove(key);
     }
 
     // Helpers /////////////////////////////////////////////////////////////////
@@ -438,18 +446,35 @@ public class BPlusTree {
 
     // Iterator ////////////////////////////////////////////////////////////////
     private class BPlusTreeIterator implements Iterator<RecordId> {
-        // TODO(proj2): Add whatever fields and constructors you want here.
+        LeafNode currentLeaf;
+        Iterator<RecordId> recordIdIterator;
+
+        public BPlusTreeIterator(DataBox key) {
+            this.currentLeaf = root.get(key);
+            this.recordIdIterator = this.currentLeaf.scanGreaterEqual(key);
+        }
+
+        public BPlusTreeIterator() {
+            this.currentLeaf = root.getLeftmostLeaf();
+            this.recordIdIterator = currentLeaf.scanAll();
+        }
 
         @Override
         public boolean hasNext() {
-            // TODO(proj2): implement
-
-            return false;
+            return recordIdIterator.hasNext() || currentLeaf.getRightSibling().isPresent();
         }
 
         @Override
         public RecordId next() {
-            // TODO(proj2): implement
+            if (recordIdIterator.hasNext()) {
+                return recordIdIterator.next();
+            }
+
+            if (currentLeaf.getRightSibling().isPresent()) {
+                currentLeaf = currentLeaf.getRightSibling().get();
+                recordIdIterator = currentLeaf.scanAll();
+                return recordIdIterator.next();
+            }
 
             throw new NoSuchElementException();
         }
