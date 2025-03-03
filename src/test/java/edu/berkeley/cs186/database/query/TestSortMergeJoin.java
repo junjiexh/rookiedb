@@ -209,6 +209,7 @@ public class TestSortMergeJoin {
                     expectedRecord = expectedRecord4;
                 }
                 Record r = outputIterator.next();
+//                System.out.println("Record: " + r + " numRecords: " + numRecords);
                 assertEquals("mismatch at record " + numRecords, expectedRecord, r);
                 numRecords++;
             }
