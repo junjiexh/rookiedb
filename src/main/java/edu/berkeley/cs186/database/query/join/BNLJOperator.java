@@ -87,7 +87,6 @@ public class BNLJOperator extends JoinOperator {
          * Make sure you pass in the correct schema to this method.
          */
         private void fetchNextLeftBlock() {
-            System.out.println("fetchNextLeftBlock");
             int page = numBuffers - 2;
             this.leftBlockIterator = getBlockIterator(leftSourceIterator, getLeftSource().getSchema(), page);
             assert leftBlockIterator.hasNext();
@@ -107,7 +106,6 @@ public class BNLJOperator extends JoinOperator {
          * Make sure you pass in the correct schema to this method.
          */
         private void fetchNextRightPage() {
-            System.out.println("fetchNextRightPage");
             this.rightPageIterator = getBlockIterator(rightSourceIterator, getRightSource().getSchema(), 1);
             assert rightPageIterator.hasNext();
             this.rightPageIterator.markNext();

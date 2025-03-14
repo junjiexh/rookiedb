@@ -108,7 +108,6 @@ public class GHJOperator extends JoinOperator {
             probeColumnIndex = getLeftColumnIndex();
             probeFirst = true; // build right
         } else {
-            System.out.println("left pages: " + leftPartition.getNumPages() + ", right pages: " + rightPartition.getNumPages());
             throw new IllegalArgumentException(
                 "Neither the left nor the right records in this partition " +
                 "fit in B-2 pages of memory."
@@ -158,8 +157,6 @@ public class GHJOperator extends JoinOperator {
             try {
                 buildAndProbe(leftPartitions[i], rightPartitions[i]);
             } catch (IllegalArgumentException e) {
-                System.out.println(e.getMessage());
-                System.out.println("start a new pass: " + (pass + 1));
                 run(leftPartitions[i], rightPartitions[i], pass + 1);
             }
         }

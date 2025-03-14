@@ -53,6 +53,12 @@
 
     <profiles>
         <profile>
+            <id>proj3Part1</id>
+            <properties>
+                <proj>3Part1</proj>
+            </properties>
+        </profile>
+        <profile>
             <id>public</id>
             <build>
                 <plugins>
