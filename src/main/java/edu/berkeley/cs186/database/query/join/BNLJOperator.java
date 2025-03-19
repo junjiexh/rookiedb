@@ -89,7 +89,9 @@ public class BNLJOperator extends JoinOperator {
         private void fetchNextLeftBlock() {
             int page = numBuffers - 2;
             this.leftBlockIterator = getBlockIterator(leftSourceIterator, getLeftSource().getSchema(), page);
-            assert leftBlockIterator.hasNext();
+            if (!leftBlockIterator.hasNext()) {
+                return;
+            }
             this.leftBlockIterator.markNext();
             this.leftRecord = leftBlockIterator.next();
         }
@@ -107,7 +109,9 @@ public class BNLJOperator extends JoinOperator {
          */
         private void fetchNextRightPage() {
             this.rightPageIterator = getBlockIterator(rightSourceIterator, getRightSource().getSchema(), 1);
-            assert rightPageIterator.hasNext();
+            if (!rightPageIterator.hasNext()) {
+                return;
+            }
             this.rightPageIterator.markNext();
         }
 
