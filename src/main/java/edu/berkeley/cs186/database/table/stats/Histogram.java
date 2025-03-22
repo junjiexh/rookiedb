@@ -32,7 +32,7 @@ import java.util.Iterator;
  *        0    10    20   30   40    50
  *
  * A histogram is an ordered list of B "buckets", each of which defines a range (low, high).
- * For the first, B - 1 buckets, the low of the range is inclusive an the high of the
+ * For the first, B - 1 buckets, the low of the range is inclusive on the high of the
  * range is exclusive. For the last Bucket the high of the range is inclusive as well.
  * Each bucket counts the number of values that fall within its range. In this project,
  * you will work with a floating point histogram where low and high are defined by floats.
