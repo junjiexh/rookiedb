@@ -742,7 +742,7 @@ public class QueryPlan {
         this.addProject();
         this.addSort();
         this.addLimit();
-        return finalOp.iterator();
+        return finalOperator.iterator();
     }
 
     // EXECUTE NAIVE ///////////////////////////////////////////////////////////

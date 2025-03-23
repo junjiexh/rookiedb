@@ -61,9 +61,9 @@
 
     <profiles>
         <profile>
-            <id>proj3Part1</id>
+            <id>proj3</id>
             <properties>
-                <proj>3Part1</proj>
+                <proj>3</proj>
             </properties>
         </profile>
         <profile>
