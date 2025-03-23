@@ -665,19 +665,19 @@ public class QueryPlan {
         for (Set<String> tables : prevMap.keySet()) {
             for (JoinPredicate predicate : this.joinPredicates) {
                 Set<String> newSet = new HashSet<>(tables);
+                QueryOperator join = null;
                 if (tables.contains(predicate.leftTable) && !tables.contains(predicate.rightTable)) {
                     QueryOperator rightOp = pass1Map.get(Set.of(predicate.rightTable));
-                    QueryOperator join = minCostJoinType(prevMap.get(tables), rightOp, predicate.leftColumn, predicate.rightColumn);
+                    join = minCostJoinType(prevMap.get(tables), rightOp, predicate.leftColumn, predicate.rightColumn);
                     newSet.add(predicate.rightTable);
-                    result.put(newSet, join);
                 } else if (tables.contains(predicate.rightTable) && !tables.contains(predicate.leftTable)) {
                     QueryOperator leftOp = pass1Map.get(Set.of(predicate.leftTable));
-                    QueryOperator join = minCostJoinType(leftOp, prevMap.get(tables), predicate.leftColumn, predicate.rightColumn);
+                    join = minCostJoinType(leftOp, prevMap.get(tables), predicate.leftColumn, predicate.rightColumn);
                     newSet.add(predicate.leftTable);
-                    result.put(newSet, join);
                 } else {
                     continue;
                 }
+                result.put(newSet, join);
             }
         }
         return result;
@@ -717,7 +717,6 @@ public class QueryPlan {
      */
     public Iterator<Record> execute() {
         this.transaction.setAliasMap(this.aliases);
-        // TODO(proj3_part2): implement
         // Pass 1: For each table, find the lowest cost QueryOperator to access
         // the table. Construct a mapping of each table name to its lowest cost
         // operator.
@@ -729,7 +728,21 @@ public class QueryPlan {
         // Set the final operator to the lowest cost operator from the last
         // pass, add group by, project, sort and limit operators, and return an
         // iterator over the final operator.
-        return this.executeNaive(); // TODO(proj3_part2): Replace this!
+        Map<Set<String>, QueryOperator> prevMap = new HashMap<>(), pass1Map = prevMap;
+        for (String tableName : this.tableNames) {
+            QueryOperator op = this.minCostSingleAccess(tableName);
+            prevMap.put(new HashSet<>(Collections.singletonList(tableName)), op);
+        }
+        for (int i = 0; i < this.tableNames.size() - 1; i++) {
+            prevMap = minCostJoins(prevMap, pass1Map);
+        }
+        QueryOperator finalOp = this.minCostOperator(prevMap);
+        this.finalOperator = finalOp;
+        this.addGroupBy();
+        this.addProject();
+        this.addSort();
+        this.addLimit();
+        return finalOp.iterator();
     }
 
     // EXECUTE NAIVE ///////////////////////////////////////////////////////////
