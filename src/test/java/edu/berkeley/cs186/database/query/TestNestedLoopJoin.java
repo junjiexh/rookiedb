@@ -316,6 +316,33 @@ public class TestNestedLoopJoin {
     }
 
     @Test
+    @Category(StudentTests.class)
+    public void testEmptyWithNonEmptyBNLJ() {
+        d.setWorkMem(4);
+        try (Transaction transaction = d.beginTransaction()) {
+            setSourceOperators(
+                    TestUtils.createSourceWithInts(Collections.emptyList()),
+                    TestUtils.createSourceWithAllTypes(100),
+                    transaction
+            );
+
+            startCountIOs();
+
+            // Constructing the operator should incur no extra IOs
+            JoinOperator joinOperator = new BNLJOperator(leftSourceOperator, rightSourceOperator,
+                    "int", "int", transaction.getTransactionContext());
+            checkIOs(0);
+
+            // Creating the iterator should incur 1 IO for the first page of the right relation
+            Iterator<Record> outputIterator = joinOperator.iterator();
+            checkIOs(1);
+
+            // Since left table is empty, hasNext should return false immediately
+            assertFalse("Iterator should be empty for empty left table", outputIterator.hasNext());
+        }
+    }
+
+    @Test
     @Category(PublicTests.class)
     public void testSimplePNLJOutputOrder() {
         // Constructs two tables both the schema (BOOL, INT, STRING(1), FLOAT).
