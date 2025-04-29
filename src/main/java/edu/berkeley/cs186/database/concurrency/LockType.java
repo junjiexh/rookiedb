@@ -4,26 +4,48 @@ package edu.berkeley.cs186.database.concurrency;
  * Utility methods to track the relationships between different lock types.
  */
 public enum LockType {
-    S,   // shared
-    X,   // exclusive
-    IS,  // intention shared
-    IX,  // intention exclusive
-    SIX, // shared intention exclusive
-    NL;  // no lock held
+    NL(0),  // no lock held
+    IS(1),  // intention shared
+    IX(2),  // intention exclusive
+    S(3),   // shared
+    SIX(4), // shared intention exclusive
+    X(5);   // exclusive
+
+    public final int index;
 
     /**
      * This method checks whether lock types A and B are compatible with
      * each other. If a transaction can hold lock type A on a resource
      * at the same time another transaction holds lock type B on the same
      * resource, the lock types are compatible.
+     *
+     * order of matrix: 
+     *     |NL|IS|IX|S|SIX|X
+     * NL  |T |T |T |T |T |T
+     * IS  |T |T |T |T |T |F
+     * IX  |T |T |T |F |F |F
+     * S   |T |T |F |T |F |F
+     * SIX |T |T |F |F |F |F
+     * X   |T |F |F |F |F |F
      */
+    static final boolean[][] compatibleMatrix = {
+            {true, true, true, true, true, true},
+            {true, true, true, true, true, false},
+            {true, true, true, false, false, false},
+            {true, true, false, true, false, false},
+            {true, true, false, false, false, false},
+            {true, false, false, false, false, false},
+    };
+
+    LockType(int index) {
+        this.index = index;
+    }
+
     public static boolean compatible(LockType a, LockType b) {
         if (a == null || b == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
-
-        return false;
+        return compatibleMatrix[a.index][b.index];
     }
 
     /**
@@ -48,14 +70,28 @@ public enum LockType {
     /**
      * This method returns if parentLockType has permissions to grant a childLockType
      * on a child.
+     *
+     *     |NL|IS|IX|S|SIX|X
+     * NL  |T |F |F |F |F |F
+     * IS  |T |T |F |T |F |F
+     * IX  |T |T |T |T |T |T
+     * S   |T |F |F |F |F |F
+     * SIX |T |F |T |F |F |T
+     * X   |T |F |F |F |F |F
      */
+    public static final boolean[][] canBeParentMatrix = {
+            {true, false, false, false, false, false},
+            {true, true, false, true, false, false},
+            {true, true, true, true, true, true},
+            {true, false, false, false, false, false},
+            {true, false, true, false, false, true},
+            {true, false, false, false, false, false},
+    };
     public static boolean canBeParentLock(LockType parentLockType, LockType childLockType) {
         if (parentLockType == null || childLockType == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
-
-        return false;
+        return canBeParentMatrix[parentLockType.index][childLockType.index];
     }
 
     /**
@@ -63,14 +99,28 @@ public enum LockType {
      * requiring another lock (e.g. an S lock can be substituted with
      * an X lock, because an X lock allows the transaction to do everything
      * the S lock allowed it to do).
+     *
+     *     |NL|IS|IX|S|SIX|X
+     * NL  |T |F |F |F |F |F
+     * IS  |T |T |F |F |F |F
+     * IX  |T |T |T |F |F |F
+     * S   |T |T |F |T |F |F
+     * SIX |T |T |T |T |T |F
+     * X   |T |T |T |T |T |T
      */
+    public static final boolean[][] substituteMatrix = {
+            {true, false, false, false, false, false},
+            {true, true, false, false, false, false},
+            {true, true, true, false, false, false},
+            {true, true, false, true, false, false},
+            {true, true, true, true, true, false},
+            {true, true, true, true, true, true}
+    };
     public static boolean substitutable(LockType substitute, LockType required) {
         if (required == null || substitute == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
-
-        return false;
+        return substituteMatrix[substitute.index][required.index];
     }
 
     /**
