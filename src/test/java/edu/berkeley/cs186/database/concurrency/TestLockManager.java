@@ -75,7 +75,7 @@ public class TestLockManager {
         runner.run(0, () -> lockman.acquire(transactions[0], tables[0], LockType.S));
         runner.run(1, () -> lockman.acquire(transactions[1], tables[1], LockType.X));
 
-        // Transaction 0 should have an S lock on table0
+        //symotion-prefix)   Transaction 0 should have an S lock on table0
         assertEquals(LockType.S, lockman.getLockType(transactions[0], tables[0]));
 
         // table0 should only have an S lock from Transaction 0
