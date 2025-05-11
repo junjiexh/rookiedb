@@ -198,7 +198,7 @@ public class LockManager {
         synchronized (this) {
             ResourceEntry requiredResource = getResourceEntry(name);
             LockType existedLock = requiredResource.getTransactionLockType(transNum);
-            if (LockType.NL.equals(existedLock)) {
+            if (!LockType.NL.equals(existedLock)) {
                 throw new DuplicateLockRequestException("acquireAndRelease 失败，lock已存在于transaction=" + transNum + ", lock=" + existedLock);
             }
             List<Lock> releasedLock = new ArrayList<>();
@@ -274,10 +274,13 @@ public class LockManager {
      */
     public void release(TransactionContext transaction, ResourceName name)
             throws NoLockHeldException {
-        // TODO(proj4_part1): implement
         // You may modify any part of this method.
+        long transNum = transaction.getTransNum();
         synchronized (this) {
-
+            ResourceEntry resourceEntry = getResourceEntry(name);
+            Lock lock = resourceEntry.getTransactionLock(transNum)
+                    .orElseThrow(() -> new NoLockHeldException("release failed, transaction在资源" + name + "上没锁, transactionNum=" + transNum));
+            resourceEntry.releaseLock(lock);
         }
     }
 
@@ -305,11 +308,33 @@ public class LockManager {
     public void promote(TransactionContext transaction, ResourceName name,
                         LockType newLockType)
             throws DuplicateLockRequestException, NoLockHeldException, InvalidLockException {
-        // TODO(proj4_part1): implement
         // You may modify any part of this method.
         boolean shouldBlock = false;
+        long transNum = transaction.getTransNum();
         synchronized (this) {
+            ResourceEntry resourceEntry = getResourceEntry(name);
+            LockType requiredLockType = resourceEntry.getTransactionLockType(transNum);
+            if (Objects.equals(requiredLockType, newLockType)) {
+                throw new DuplicateLockRequestException("锁重复, lock=" + newLockType);
+            }
+            if (LockType.NL.equals(requiredLockType)) {
+                throw new NoLockHeldException("不能在transaction没有锁的资源上promote, transaction=" + transNum);
+            }
+            if (!LockType.substitutable(newLockType, requiredLockType)) {
+                throw new InvalidLockException("非法的promotion, substitute=" + newLockType + ", required=" + requiredLockType);
+            }
 
+            Lock substituteLock = new Lock(name, newLockType, transNum);
+            if (resourceEntry.notCompatible(newLockType, transNum)) {
+                resourceEntry.addToQueue(
+                        new LockRequest(transaction, substituteLock),
+                        true
+                );
+                transaction.prepareBlock();
+                shouldBlock = true;
+            } else {
+                resourceEntry.grantOrUpdateLock(substituteLock);
+            }
         }
         if (shouldBlock) {
             transaction.block();

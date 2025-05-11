@@ -28,7 +28,7 @@ public enum LockType {
      * SIX |T |T |F |F |F |F
      * X   |T |F |F |F |F |F
      */
-    static final boolean[][] compatibleMatrix = {
+    private static final boolean[][] compatibleMatrix = {
             {true, true, true, true, true, true},
             {true, true, true, true, true, false},
             {true, true, true, false, false, false},
@@ -79,7 +79,7 @@ public enum LockType {
      * SIX |T |F |T |F |F |T
      * X   |T |F |F |F |F |F
      */
-    public static final boolean[][] canBeParentMatrix = {
+    private static final boolean[][] canBeParentMatrix = {
             {true, false, false, false, false, false},
             {true, true, false, true, false, false},
             {true, true, true, true, true, true},
@@ -108,7 +108,7 @@ public enum LockType {
      * SIX |T |T |T |T |T |F
      * X   |T |T |T |T |T |T
      */
-    public static final boolean[][] substituteMatrix = {
+    private static final boolean[][] substituteMatrix = {
             {true, false, false, false, false, false},
             {true, true, false, false, false, false},
             {true, true, true, false, false, false},
