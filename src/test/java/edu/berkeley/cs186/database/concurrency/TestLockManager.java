@@ -364,7 +364,7 @@ public class TestLockManager {
         runner.run(1, () -> lockman.acquire(transactions[1], dbResource, LockType.X));
         runner.run(2, () -> lockman.acquire(transactions[2], dbResource, LockType.S));
 
-        // Lock check
+        //symotion-prefix) Lock check
         assertEquals(Collections.singletonList(new Lock(dbResource, LockType.S, 0L)),
                      lockman.getLocks(dbResource));
 
