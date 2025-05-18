@@ -41,6 +41,11 @@ public class LockManager {
     // queue for requests on that resource.
     private Map<ResourceName, ResourceEntry> resourceEntries = new HashMap<>();
 
+    List<Lock> getDescendantLocks(TransactionContext transaction, ResourceName name) {
+        return getLocks(transaction)
+                .stream().filter(l -> l.name.isDescendantOf(name)).collect(Collectors.toList());
+    }
+
     // A ResourceEntry contains the list of locks on a resource, as well as
     // the queue for requests for locks on the resource.
     private class ResourceEntry {

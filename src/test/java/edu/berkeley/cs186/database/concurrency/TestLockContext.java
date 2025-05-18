@@ -321,6 +321,12 @@ public class TestLockContext {
         LockContext r2 = dbLockContext.childContext("table2");
         LockContext r3 = dbLockContext.childContext("table3");
 
+
+        //
+        //       IS
+        //     / | \
+        //    S IS  S
+        //
         r0.acquire(t1, LockType.IS);
         r1.acquire(t1, LockType.S);
         r2.acquire(t1, LockType.IS);
