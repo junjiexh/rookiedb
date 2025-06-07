@@ -3,6 +3,7 @@ package edu.berkeley.cs186.database.concurrency;
 import edu.berkeley.cs186.database.TransactionContext;
 import edu.berkeley.cs186.database.TimeoutScaling;
 import edu.berkeley.cs186.database.categories.*;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -52,6 +53,11 @@ public class TestLockUtil {
         TransactionContext.setTransaction(transaction);
     }
 
+    @After
+    public void tearDown() {
+        TransactionContext.unsetTransaction();
+    }
+
     @Test
     @Category(SystemTests.class)
     public void testRequestNullTransaction() {
@@ -64,6 +70,8 @@ public class TestLockUtil {
         TransactionContext.unsetTransaction();
         LockUtil.ensureSufficientLockHeld(pageContexts[4], LockType.S);
         assertEquals(Collections.emptyList(), lockManager.log);
+        // Set it back for other tests if running in suite, or for tearDown
+        TransactionContext.setTransaction(transaction);
     }
 
     @Test
@@ -277,6 +285,7 @@ public class TestLockUtil {
         LockUtil.ensureSufficientLockHeld(tableContext, LockType.NL);
         assertEquals(Collections.emptyList(), lockManager.log);
     }
+
 
 }
 

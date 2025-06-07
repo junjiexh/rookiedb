@@ -225,6 +225,7 @@ public class LockContext {
                 throw new InvalidLockException("promote failed, target lock=" + newLockType + ", 但是祖先节点中已有SIX锁");
             }
             List<ResourceName> descendants = sisDescendants(transaction);
+            descendants.add(name); // 同时释放自己的锁
             lockman.acquireAndRelease(transaction, name, newLockType, descendants); // 保证原子性
             for (ResourceName descendant : descendants) {
                 updateParentChildLockNum(descendant, transaction, CHILD_RELEASE);

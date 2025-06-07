@@ -42,8 +42,68 @@ public class LockUtil {
         LockType explicitLockType = lockContext.getExplicitLockType(transaction);
 
         // TODO(proj4_part2): implement
+        // 当前锁已经满足需求，do nothing
+        // NL会包含在里面
+        if (LockType.substitutable(effectiveLockType, requestType)) {
+            return;
+        }
+
+        // 如果当前锁已经持有IX，且请求一个S锁，则会将其升级为SIX
+        if (LockType.IX.equals(explicitLockType) && LockType.S.equals(requestType)) {
+            lockContext.promote(transaction, LockType.SIX);
+            return;
+        }
+
+        // 如果当前已经持有意向锁
+        // 例如 IX -> X, IS -> S
+        if (explicitLockType.isIntent()) {
+            lockContext.escalate(transaction);
+            return;
+        }
+
+        // 如果都不是，考虑的情况：
+        // current: NL，required: S/X -> acquire
+        // current: S, required: X -> promote
+        ensureParentLockHeld(transaction, lockContext, requestType == LockType.X ? LockType.IX : LockType.IS);
+        if (LockType.NL.equals(effectiveLockType)) {
+            lockContext.acquire(transaction, requestType);
+        } else {
+            lockContext.promote(transaction, requestType);
+        }
+
         return;
     }
 
-    // TODO(proj4_part2) add any helper methods you want
+    /**
+     * 确保当前锁的父锁持有了所需的锁类型。
+     * 递归向上检查，从最上层的锁开始检查。
+     * 如果父锁不满足要求，则为其获取所需的锁类型。
+     *
+     * @param current current lock context
+     * @param requiredLockType 需要的锁类型，只能是IX或者IS
+     */
+    public static void ensureParentLockHeld(TransactionContext transaction, LockContext current, LockType requiredLockType) {
+        if (!requiredLockType.equals(LockType.IX) && !requiredLockType.equals(LockType.IS)) {
+            throw new IllegalArgumentException("Lock type must be IX or IS, not " + requiredLockType);
+        }
+
+        LockContext parent = current.parentContext();
+        if (parent == null) {
+            return;
+        }
+        ensureParentLockHeld(transaction, parent, requiredLockType);
+
+        LockType parentLock = parent.getEffectiveLockType(transaction);
+        // 父锁已经满足要求，可以不用获取
+        if (LockType.substitutable(parentLock, requiredLockType)) {
+            return;
+        }
+
+        if (LockType.NL.equals(parentLock)) {
+            parent.acquire(transaction, requiredLockType);
+            return;
+        }
+
+        parent.promote(transaction, requiredLockType);
+    }
 }
