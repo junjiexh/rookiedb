@@ -1,6 +1,7 @@
 package edu.berkeley.cs186.database.concurrency;
 
 import edu.berkeley.cs186.database.TransactionContext;
+import edu.berkeley.cs186.database.query.disk.Run;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -129,7 +130,19 @@ public class LockContext {
         if (parentContext == null) {
             return;
         }
-        parentContext.numChildLocks.compute(transaction.getTransNum(), (k, v) -> v == null ? add : v + add);
+        if (add == CHILD_ACQUIRE) {
+            parentContext.numChildLocks.compute(transaction.getTransNum(), (k, v) -> v == null ? 1 : v + 1);
+        } else if (add == CHILD_RELEASE) {
+            parentContext.numChildLocks.compute(transaction.getTransNum(), (k, v) -> {
+                if (v == null || v == 0) {
+                    throw new RuntimeException("正在释放父节点未计数的子锁, transaction=" + transaction.getTransNum() + ", " +
+                            "resource=" + getResourceName() + ", numChildLocks=" + parentContext.getNumChildren(transaction));
+                }
+                return v - 1;
+            });
+        } else {
+            throw new IllegalArgumentException("Invalid add value: " + add);
+        }
     }
     private void updateParentChildLockNum(ResourceName resourceName, TransactionContext transaction, int add) {
         LockContext lockContext = fromResourceName(lockman, resourceName);
@@ -225,8 +238,9 @@ public class LockContext {
                 throw new InvalidLockException("promote failed, target lock=" + newLockType + ", 但是祖先节点中已有SIX锁");
             }
             List<ResourceName> descendants = sisDescendants(transaction);
-            descendants.add(name); // 同时释放自己的锁
-            lockman.acquireAndRelease(transaction, name, newLockType, descendants); // 保证原子性
+            List<ResourceName> needRelease = new ArrayList<>(descendants);
+            needRelease.add(name); // 同时释放自己的锁
+            lockman.acquireAndRelease(transaction, name, newLockType, needRelease); // 保证原子性
             for (ResourceName descendant : descendants) {
                 updateParentChildLockNum(descendant, transaction, CHILD_RELEASE);
             }

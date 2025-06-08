@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Phaser;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * Database objects keeps track of transactions, tables, and indices
@@ -953,8 +954,19 @@ public class Database implements AutoCloseable {
         @Override
         public void close() {
             try {
-                // TODO(proj4_part2)
-                return;
+                // 释放所有该事务持有的锁
+                List<LockContext> lcs =
+                        lockManager.getLocks(this).stream().map(l -> LockContext.fromResourceName(lockManager,
+                                l.name)).collect(Collectors.toList());
+                // 如果一个锁没有子节点，才能被释放。
+                while (!lcs.isEmpty()) {
+                    LockContext lc = lcs.remove(0);
+                    if (lc.getNumChildren(this) == 0) {
+                        lc.release(this);
+                        continue;
+                    }
+                    lcs.add(lc);
+                }
             } catch (Exception e) {
                 // There's a chance an error message from your release phase
                 // logic can get suppressed. This guarantees that the stack
@@ -1288,7 +1300,7 @@ public class Database implements AutoCloseable {
 
     /**
      * Loads a CSV from src/main/resources in as a table.
-     * 
+     *
      * @param name the name of the csv file (without .csv extension)
      * @return true if the table already existed in the database, false otherwise
      */

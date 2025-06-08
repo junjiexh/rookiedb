@@ -41,7 +41,6 @@ public class LockUtil {
         LockType effectiveLockType = lockContext.getEffectiveLockType(transaction);
         LockType explicitLockType = lockContext.getExplicitLockType(transaction);
 
-        // TODO(proj4_part2): implement
         // 当前锁已经满足需求，do nothing
         // NL会包含在里面
         if (LockType.substitutable(effectiveLockType, requestType)) {
@@ -64,8 +63,8 @@ public class LockUtil {
         // 如果都不是，考虑的情况：
         // current: NL，required: S/X -> acquire
         // current: S, required: X -> promote
-        ensureParentLockHeld(transaction, lockContext, requestType == LockType.X ? LockType.IX : LockType.IS);
-        if (LockType.NL.equals(effectiveLockType)) {
+        ensureLockHoldRecursively(transaction, lockContext.parentContext(), requestType == LockType.X ? LockType.IX : LockType.IS);
+        if (LockType.NL.equals(explicitLockType)) {
             lockContext.acquire(transaction, requestType);
         } else {
             lockContext.promote(transaction, requestType);
@@ -82,28 +81,33 @@ public class LockUtil {
      * @param current current lock context
      * @param requiredLockType 需要的锁类型，只能是IX或者IS
      */
-    public static void ensureParentLockHeld(TransactionContext transaction, LockContext current, LockType requiredLockType) {
+    public static void ensureLockHoldRecursively(TransactionContext transaction, LockContext current, LockType requiredLockType) {
+        if (current == null)
+            return;
         if (!requiredLockType.equals(LockType.IX) && !requiredLockType.equals(LockType.IS)) {
             throw new IllegalArgumentException("Lock type must be IX or IS, not " + requiredLockType);
         }
 
         LockContext parent = current.parentContext();
-        if (parent == null) {
-            return;
-        }
-        ensureParentLockHeld(transaction, parent, requiredLockType);
-
-        LockType parentLock = parent.getEffectiveLockType(transaction);
-        // 父锁已经满足要求，可以不用获取
-        if (LockType.substitutable(parentLock, requiredLockType)) {
-            return;
+        if (parent != null) {
+            ensureLockHoldRecursively(transaction, parent, requiredLockType);
         }
 
-        if (LockType.NL.equals(parentLock)) {
-            parent.acquire(transaction, requiredLockType);
+        LockType currentLock = current.getEffectiveLockType(transaction);
+        // 当前锁已经满足要求，可以不用获取
+        if (LockType.substitutable(currentLock, requiredLockType)) {
             return;
         }
 
-        parent.promote(transaction, requiredLockType);
+        // 升级成SIX的情况
+        if (LockType.S.equals(currentLock) && LockType.IX.equals(requiredLockType)) {
+            current.promote(transaction, LockType.SIX);
+            return;
+        } else if (LockType.NL.equals(currentLock)) {
+            current.acquire(transaction, requiredLockType);
+            return;
+        }
+
+        current.promote(transaction, requiredLockType);
     }
 }
