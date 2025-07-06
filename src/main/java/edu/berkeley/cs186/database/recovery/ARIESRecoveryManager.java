@@ -179,7 +179,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
         long lastRecordLSN = lastRecord.getLSN();
         // Small optimization: if the last record is a CLR we can start rolling
         // back from the next record that hasn't yet been undone.
-        long currentLSN = lastRecord.getUndoNextLSN().orElse(lastRecordLSN); // todo: ???
+        long currentLSN = lastRecord.getUndoNextLSN().orElse(lastRecordLSN);
 
         while (currentLSN > LSN) {
             LogRecord record = logManager.fetchLogRecord(currentLSN);
@@ -431,8 +431,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
 
         // All of the transaction's changes strictly after the record at LSN should be undone.
         long savepointLSN = transactionEntry.getSavepoint(name);
-
-        // TODO(proj5): implement
+        rollbackToLSN(transNum, savepointLSN);
         return;
     }
 
