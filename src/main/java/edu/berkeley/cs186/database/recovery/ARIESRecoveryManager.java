@@ -122,7 +122,6 @@ public class ARIESRecoveryManager implements RecoveryManager {
         long LSN = logManager.appendToLog(record);
         this.transactionTable.get(transNum).lastLSN = LSN;
 
-        logManager.flushToLSN(LSN);
         return LSN;
     }
 
@@ -248,10 +247,20 @@ public class ARIESRecoveryManager implements RecoveryManager {
         assert (before.length == after.length);
         assert (before.length <= BufferManager.EFFECTIVE_PAGE_SIZE / 2);
         // TODO(proj5): implement
-        return -1L;
+        // append log record
+        long lastLSN = this.transactionTable.get(transNum).lastLSN;
+        LogRecord record = new UpdatePageLogRecord(transNum, pageNum, lastLSN, pageOffset, before, after);
+        long LSN = logManager.appendToLog(record);
+
+        // update transaction table
+        this.transactionTable.get(transNum).lastLSN = LSN;
+
+        // update dirty page table
+        this.dirtyPageTable.putIfAbsent(pageNum, LSN);
+        return LSN;
     }
 
-    /**
+    /*
      * Called when a new partition is allocated. A log flush is necessary,
      * since changes are visible on disk immediately after this returns.
      *
