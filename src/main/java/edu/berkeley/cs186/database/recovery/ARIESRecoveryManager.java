@@ -246,7 +246,6 @@ public class ARIESRecoveryManager implements RecoveryManager {
                              byte[] after) {
         assert (before.length == after.length);
         assert (before.length <= BufferManager.EFFECTIVE_PAGE_SIZE / 2);
-        // TODO(proj5): implement
         // append log record
         long lastLSN = this.transactionTable.get(transNum).lastLSN;
         LogRecord record = new UpdatePageLogRecord(transNum, pageNum, lastLSN, pageOffset, before, after);
@@ -458,9 +457,34 @@ public class ARIESRecoveryManager implements RecoveryManager {
         Map<Long, Long> chkptDPT = new HashMap<>();
         Map<Long, Pair<Transaction.Status, Long>> chkptTxnTable = new HashMap<>();
 
-        // TODO(proj5): generate end checkpoint record(s) for DPT and transaction table
+        Iterator<Map.Entry<Long, Long>> it = this.dirtyPageTable.entrySet().iterator();
+        while (it.hasNext()) {
+            if (EndCheckpointLogRecord.fitsInOneRecord(chkptDPT.size() + 1, chkptTxnTable.size())) {
+                Map.Entry<Long, Long> next = it.next();
+                chkptDPT.put(next.getKey(), next.getValue());
+            } else {
+                LogRecord endRecord = new EndCheckpointLogRecord(chkptDPT, chkptTxnTable);
+                logManager.appendToLog(endRecord);
+                chkptDPT.clear();
+                chkptTxnTable.clear();
+            }
+        }
 
-        // Last end checkpoint record
+        Iterator<Map.Entry<Long, TransactionTableEntry>> it2 = this.transactionTable.entrySet().iterator();
+        while (it2.hasNext()) {
+            if (EndCheckpointLogRecord.fitsInOneRecord(chkptDPT.size(), chkptTxnTable.size() + 1)) {
+                Map.Entry<Long, TransactionTableEntry> next = it2.next();
+                TransactionTableEntry entry = next.getValue();
+                chkptTxnTable.put(next.getKey(), new Pair<>(entry.transaction.getStatus(), entry.lastLSN));
+            } else {
+                LogRecord endRecord = new EndCheckpointLogRecord(chkptDPT, chkptTxnTable);
+                logManager.appendToLog(endRecord);
+                chkptDPT.clear();
+                chkptTxnTable.clear();
+            }
+        }
+
+        // Last end checkpoint record(final)
         LogRecord endRecord = new EndCheckpointLogRecord(chkptDPT, chkptTxnTable);
         logManager.appendToLog(endRecord);
         // Ensure checkpoint is fully flushed before updating the master record
