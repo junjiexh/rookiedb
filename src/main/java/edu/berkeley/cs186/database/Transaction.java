@@ -35,6 +35,7 @@ public abstract class Transaction implements AutoCloseable {
             switch (to) {
                 case COMPLETE:
                     return to;
+                case ABORTING:
                     if (from == Status.RUNNING) {
                         return Status.RECOVERY_ABORTING;
                     }
