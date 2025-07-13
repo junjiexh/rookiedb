@@ -594,8 +594,98 @@ public class ARIESRecoveryManager implements RecoveryManager {
         long LSN = masterRecord.lastCheckpointLSN;
         // Set of transactions that have completed
         Set<Long> endedTransactions = new HashSet<>();
-        // TODO(proj5): implement
-        return;
+        // start scanning log records from the last checkpoint
+
+        Iterator<LogRecord> it = logManager.scanFrom(LSN);
+        while (it.hasNext()) {
+            LogRecord r = it.next();
+            if (r.getTransNum().isPresent()) {
+                long transNum = r.getTransNum().get();
+                // Update transaction table
+                transactionTable.putIfAbsent(transNum, new TransactionTableEntry(newTransaction.apply(transNum)));
+                // update lastLSN
+                TransactionTableEntry entry = transactionTable.get(transNum);
+                entry.lastLSN = r.getLSN();
+            }
+            if (r.getPageNum().isPresent()) {
+                long pageNum = r.getPageNum().get();
+                // Update dirty page table
+                switch (r.getType()) {
+                    case ALLOC_PAGE:
+                    case UNDO_FREE_PAGE:
+                        // No action needed for alloc/undoFreePage
+                        break;
+                    case UPDATE_PAGE:
+                    case UNDO_UPDATE_PAGE:
+                        // Dirty page, update DPT
+                        dirtyPage(pageNum, r.getLSN());
+                        break;
+                    case FREE_PAGE:
+                    case UNDO_ALLOC_PAGE:
+                        // Dirty page, update DPT
+                        dirtyPageTable.remove(pageNum);
+                        break;
+                }
+            }
+            // update status
+            if (LogType.COMMIT_TRANSACTION.equals(r.getType())
+                    || LogType.ABORT_TRANSACTION.equals(r.getType())
+                    || LogType.END_TRANSACTION.equals(r.getType())
+            ) {
+                long transNum = r.getTransNum().get();
+                TransactionTableEntry entry = transactionTable.get(transNum);
+                switch (r.getType()) {
+                    case COMMIT_TRANSACTION:
+                        entry.transaction.setStatus(Transaction.Status.COMMITTING);
+                        break;
+                    case ABORT_TRANSACTION:
+                        entry.transaction.setStatus(Transaction.Status.RECOVERY_ABORTING);
+                        break;
+                    case END_TRANSACTION:
+                        entry.transaction.cleanup();
+                        TransactionTableEntry ended = this.transactionTable.remove(transNum);
+                        ended.transaction.setStatus(Transaction.Status.COMPLETE);
+                        endedTransactions.add(transNum);
+                        break;
+                }
+            }
+
+            // 开始checkpoint merge。这个checkpoint可能是一个不完整的checkpoint。
+            if (LogType.END_CHECKPOINT.equals(r.getType())) {
+                EndCheckpointLogRecord endCheckpoint = (EndCheckpointLogRecord) r;
+                dirtyPageTable.putAll(endCheckpoint.getDirtyPageTable());
+
+                endCheckpoint.getTransactionTable().forEach((transNum, entry) -> {
+                    if (Transaction.Status.COMPLETE.equals(entry.getFirst())) {
+                        return;
+                    }
+                    transactionTable.putIfAbsent(transNum, new TransactionTableEntry(newTransaction.apply(transNum)));
+                    transactionTable.computeIfPresent(transNum, (k, v) -> {
+                        v.lastLSN = Math.max(v.lastLSN, entry.getSecond());
+                        v.transaction.setStatus(Transaction.Status.transition(
+                                v.transaction.getStatus(), entry.getFirst()));
+                        return v;
+                    });
+                });
+            }
+        }
+
+        transactionTable.forEach((transNum, transactionTableEntry) -> {
+            if (Transaction.Status.COMMITTING.equals(transactionTableEntry.transaction.getStatus())) {
+                transactionTableEntry.transaction.cleanup();
+                if (transactionTableEntry.transaction.getStatus() != Transaction.Status.COMPLETE) {
+                    transactionTableEntry.transaction.setStatus(Transaction.Status.COMPLETE);
+                    LogRecord endRecord = new EndTransactionLogRecord(transNum, transactionTableEntry.lastLSN);
+                    transactionTableEntry.lastLSN = logManager.appendToLog(endRecord);
+                }
+            } else if (Transaction.Status.RUNNING.equals(transactionTableEntry.transaction.getStatus())) {
+                transactionTableEntry.transaction.setStatus(Transaction.Status.RECOVERY_ABORTING);
+                LogRecord abortRecord = new AbortTransactionLogRecord(transNum, transactionTableEntry.lastLSN);
+                transactionTableEntry.lastLSN = logManager.appendToLog(abortRecord);
+            }
+        });
+
+        transactionTable.entrySet().removeIf(entry -> entry.getValue().transaction.getStatus() == Transaction.Status.COMPLETE);
     }
 
     /**

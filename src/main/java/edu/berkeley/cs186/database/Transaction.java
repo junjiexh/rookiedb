@@ -30,6 +30,26 @@ public abstract class Transaction implements AutoCloseable {
             }
             return values()[x];
         }
+
+        public static Status transition(Status from, Status to) {
+            switch (to) {
+                case COMPLETE:
+                    return to;
+                    if (from == Status.RUNNING) {
+                        return Status.RECOVERY_ABORTING;
+                    }
+                case COMMITTING:
+                    if (Status.RUNNING.equals(from)) {
+                        return to;
+                    }
+                case RECOVERY_ABORTING:
+                    if (Status.RUNNING.equals(from)) {
+                        return to;
+                    }
+                default:
+                    return from;
+            }
+        }
     }
 
     private Status status = Status.RUNNING;
