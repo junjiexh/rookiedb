@@ -11,6 +11,7 @@ import edu.berkeley.cs186.database.recovery.records.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of ARIES.
@@ -701,7 +702,6 @@ public class ARIESRecoveryManager implements RecoveryManager {
      *   the pageLSN is checked, and the record is redone if needed.
      */
     void restartRedo() {
-        // TODO(proj5): implement
         Long lowestLSN = this.dirtyPageTable.values().stream().min(Long::compare).orElse(0L);
 
         Iterator<LogRecord> it = logManager.scanFrom(lowestLSN);
@@ -761,8 +761,45 @@ public class ARIESRecoveryManager implements RecoveryManager {
      *   and remove from transaction table.
      */
     void restartUndo() {
-        // TODO(proj5): implement
-        return;
+        PriorityQueue<Pair<Long, TransactionTableEntry>> pq = new PriorityQueue<>(
+                new PairFirstReverseComparator<>()
+        );
+
+        this.transactionTable.entrySet().stream()
+                .filter(entry -> Transaction.Status.RECOVERY_ABORTING == entry.getValue().transaction.getStatus())
+                .forEach(entry -> pq.add(new Pair<>(entry.getValue().lastLSN, entry.getValue())));
+
+        while (!pq.isEmpty()) {
+            Pair<Long, TransactionTableEntry> pair = pq.poll();
+            long lastLSN = pair.getFirst();
+            TransactionTableEntry te = pair.getSecond();
+            LogRecord r = logManager.fetchLogRecord(lastLSN);
+            long nextLSN;
+            if (r.isUndoable()) {
+                LogRecord clr = r.undo(te.lastLSN);
+                Optional<Long> undoNextLSN = clr.getUndoNextLSN();
+                if (!undoNextLSN.isPresent()) {
+                    throw new IllegalStateException("CLR without undoNextLSN");
+                }
+                nextLSN = undoNextLSN.get();
+                te.lastLSN  = logManager.appendToLog(clr);
+                clr.redo(this, diskSpaceManager, bufferManager);
+            } else {
+                nextLSN = r.getUndoNextLSN().orElseGet(
+                        () -> r.getPrevLSN().orElseThrow(() -> new IllegalStateException("Log record without prevLSN: " + r))
+                );
+            }
+
+            if (nextLSN == 0) {
+                te.transaction.cleanup();
+                te.transaction.setStatus(Transaction.Status.COMPLETE);
+                LogRecord endRecord = new EndTransactionLogRecord(te.transaction.getTransNum(), te.lastLSN);
+                logManager.appendToLog(endRecord);
+                this.transactionTable.remove(te.transaction.getTransNum());
+            } else {
+                pq.add(new Pair<>(nextLSN, te));
+            }
+        }
     }
 
     /**
