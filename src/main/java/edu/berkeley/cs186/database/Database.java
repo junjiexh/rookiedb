@@ -1,9 +1,9 @@
 package edu.berkeley.cs186.database;
 
-import edu.berkeley.cs186.database.cli.parser.ASTExecutableStatement;
-import edu.berkeley.cs186.database.cli.parser.ParseException;
-import edu.berkeley.cs186.database.cli.parser.RookieParser;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLLexer;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
 import edu.berkeley.cs186.database.cli.visitor.ExecutableStatementVisitor;
+import org.antlr.v4.runtime.*;
 import edu.berkeley.cs186.database.common.ByteBuffer;
 import edu.berkeley.cs186.database.common.Pair;
 import edu.berkeley.cs186.database.common.PredicateOperator;
@@ -1024,15 +1024,21 @@ public class Database implements AutoCloseable {
 
         @Override
         public Optional<QueryPlan> execute(String statement) {
-            RookieParser parser = new RookieParser(new ByteArrayInputStream(statement.getBytes()));
-            ASTExecutableStatement stmt;
-            try {
-                stmt = parser.executable_stmt();
-            } catch (ParseException p) {
-                throw new DatabaseException(p.getMessage());
-            }
-            ExecutableStatementVisitor visitor = new ExecutableStatementVisitor();
-            stmt.jjtAccept(visitor, null);
+            CharStream charStream = CharStreams.fromString(statement);
+            RookieSQLLexer lexer = new RookieSQLLexer(charStream);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            RookieSQLParser parser = new RookieSQLParser(tokens);
+            parser.removeErrorListeners();
+            parser.addErrorListener(new BaseErrorListener() {
+                @Override
+                public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                                        int line, int charPositionInLine, String msg,
+                                        RecognitionException e) {
+                    throw new DatabaseException("line " + line + ":" + charPositionInLine + " " + msg);
+                }
+            });
+            RookieSQLParser.ExecutableStmtContext stmt = parser.executableStmt();
+            ExecutableStatementVisitor visitor = new ExecutableStatementVisitor(stmt);
             Optional<QueryPlan> qp = visitor.execute(this, System.out);
             return qp;
         }

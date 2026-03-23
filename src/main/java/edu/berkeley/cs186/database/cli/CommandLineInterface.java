@@ -4,22 +4,19 @@ import edu.berkeley.cs186.database.Database;
 import edu.berkeley.cs186.database.DatabaseException;
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.TransactionContext;
-import edu.berkeley.cs186.database.cli.parser.ASTSQLStatementList;
-import edu.berkeley.cs186.database.cli.parser.ParseException;
-import edu.berkeley.cs186.database.cli.parser.RookieParser;
-import edu.berkeley.cs186.database.cli.parser.TokenMgrError;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLLexer;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
 import edu.berkeley.cs186.database.cli.visitor.StatementListVisitor;
+import org.antlr.v4.runtime.*;
 import edu.berkeley.cs186.database.concurrency.LockManager;
 import edu.berkeley.cs186.database.memory.ClockEvictionPolicy;
 import edu.berkeley.cs186.database.table.Record;
 import edu.berkeley.cs186.database.table.Schema;
 import edu.berkeley.cs186.database.table.Table;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -98,19 +95,29 @@ public class CommandLineInterface {
                 return;
             }
 
-            // Convert input to raw bytes
-            ByteArrayInputStream stream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
-            RookieParser parser = new RookieParser(stream);
-            ASTSQLStatementList node;
+            CharStream charStream = CharStreams.fromString(input);
+            RookieSQLLexer lexer = new RookieSQLLexer(charStream);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            RookieSQLParser parser = new RookieSQLParser(tokens);
+            parser.removeErrorListeners();
+            parser.addErrorListener(new BaseErrorListener() {
+                @Override
+                public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                                        int line, int charPositionInLine, String msg,
+                                        RecognitionException e) {
+                    throw new RuntimeException("line " + line + ":" + charPositionInLine + " " + msg);
+                }
+            });
+            RookieSQLParser.SqlStmtListContext tree;
             try {
-                node = parser.sql_stmt_list();
-            } catch (ParseException | TokenMgrError e) {
+                tree = parser.sqlStmtList();
+            } catch (RuntimeException e) {
                 this.out.println("Parser exception: " + e.getMessage());
                 continue;
             }
             StatementListVisitor visitor = new StatementListVisitor(db, this.out);
             try {
-                node.jjtAccept(visitor, null);
+                visitor.visit(tree);
                 currTransaction = visitor.execute(currTransaction);
             } catch (DatabaseException e) {
                 this.out.println("Database exception: " + e.getMessage());

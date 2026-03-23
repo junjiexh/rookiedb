@@ -1,136 +1,49 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
-import edu.berkeley.cs186.database.cli.parser.*;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ExecutableStmtContext;
 import edu.berkeley.cs186.database.query.QueryPlan;
 
 import java.io.PrintStream;
 import java.util.Optional;
 
-public class ExecutableStatementVisitor extends RookieParserDefaultVisitor {
+public class ExecutableStatementVisitor {
     StatementVisitor visitor = null;
+
+    public ExecutableStatementVisitor(ExecutableStmtContext ctx) {
+        if (ctx.selectStmt() != null) {
+            this.visitor = new SelectStatementVisitor(ctx.selectStmt());
+        } else if (ctx.createTableStmt() != null) {
+            this.visitor = new CreateTableStatementVisitor(ctx.createTableStmt());
+        } else if (ctx.createIndexStmt() != null) {
+            this.visitor = new CreateIndexStatementVisitor(ctx.createIndexStmt());
+        } else if (ctx.dropTableStmt() != null) {
+            this.visitor = new DropTableStatementVisitor(ctx.dropTableStmt());
+        } else if (ctx.dropIndexStmt() != null) {
+            this.visitor = new DropIndexStatementVisitor(ctx.dropIndexStmt());
+        } else if (ctx.insertStmt() != null) {
+            this.visitor = new InsertStatementVisitor(ctx.insertStmt());
+        } else if (ctx.deleteStmt() != null) {
+            this.visitor = new DeleteStatementVisitor(ctx.deleteStmt());
+        } else if (ctx.updateStmt() != null) {
+            this.visitor = new UpdateStatementVisitor(ctx.updateStmt());
+        } else if (ctx.commitStmt() != null) {
+            this.visitor = new CommitStatementVisitor();
+        } else if (ctx.rollbackStmt() != null) {
+            this.visitor = new RollbackStatementVisitor(ctx.rollbackStmt());
+        } else if (ctx.savepointStmt() != null) {
+            this.visitor = new SavepointStatementVisitor(ctx.savepointStmt());
+        } else if (ctx.releaseStmt() != null) {
+            this.visitor = new ReleaseStatementVisitor(ctx.releaseStmt());
+        } else if (ctx.explainStmt() != null) {
+            this.visitor = new ExplainStatementVisitor(ctx.explainStmt());
+        }
+    }
 
     public Optional<QueryPlan> execute(Transaction transaction, PrintStream out) {
         Optional<QueryPlan> qp = visitor.getQueryPlan(transaction);
         if (qp.isPresent()) return qp;
         visitor.execute(transaction, out);
         return Optional.empty();
-    }
-
-    /**
-     * ROLLBACK
-     */
-    @Override
-    public void visit(ASTRollbackStatement node, Object data) {
-        this.visitor = new RollbackStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * SAVEPOINT
-     */
-    @Override
-    public void visit(ASTSavepointStatement node, Object data) {
-        this.visitor = new SavepointStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * RELEASE SAVEPOINT
-     */
-    @Override
-    public void visit(ASTReleaseStatement node, Object data) {
-        this.visitor = new ReleaseStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * COMMIT
-     */
-    @Override
-    public void visit(ASTCommitStatement node, Object data) {
-        this.visitor = new CommitStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * SELECT
-     */
-    @Override
-    public void visit(ASTSelectStatement node, Object data) {
-        this.visitor = new SelectStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * CREATE TABLE
-     */
-    @Override
-    public void visit(ASTCreateTableStatement node, Object data) {
-        this.visitor = new CreateTableStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * DROP TABLE
-     */
-    @Override
-    public void visit(ASTDropTableStatement node, Object data) {
-        this.visitor = new DropTableStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * CREATE INDEX
-     */
-    @Override
-    public void visit(ASTCreateIndexStatement node, Object data) {
-        this.visitor = new CreateIndexStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * DROP INDEX
-     */
-    @Override
-    public void visit(ASTDropIndexStatement node, Object data) {
-        this.visitor = new DropIndexStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * INSERT
-     */
-    @Override
-    public void visit(ASTInsertStatement node, Object data) {
-        this.visitor = new InsertStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * DELETE
-     */
-    @Override
-    public void visit(ASTDeleteStatement node, Object data) {
-        this.visitor = new DeleteStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * UPDATE
-     */
-    @Override
-    public void visit(ASTUpdateStatement node, Object data) {
-        this.visitor = new UpdateStatementVisitor();
-        node.childrenAccept(visitor, null);
-    }
-
-    /**
-     * EXPLAIN
-     */
-    @Override
-    public void visit(ASTExplainStatement node, Object data) {
-        this.visitor = new ExplainStatementVisitor();
-        node.childrenAccept(visitor, null);
     }
 }

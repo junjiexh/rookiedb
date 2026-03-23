@@ -1,14 +1,13 @@
 package edu.berkeley.cs186.database.query.expr;
 
 import edu.berkeley.cs186.database.DatabaseException;
-import edu.berkeley.cs186.database.cli.parser.ParseException;
-import edu.berkeley.cs186.database.cli.parser.RookieParser;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLLexer;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
 import edu.berkeley.cs186.database.databox.*;
 import edu.berkeley.cs186.database.table.Record;
 import edu.berkeley.cs186.database.table.Schema;
+import org.antlr.v4.runtime.*;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 
@@ -160,15 +159,20 @@ public abstract class Expression {
      * @return An expression corresponding to the passed in String
      */
     public static Expression fromString(String s) {
-        RookieParser parser = new RookieParser(
-                new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8)));
-        try {
-            ExpressionVisitor visitor = new ExpressionVisitor();
-            parser.expression().jjtAccept(visitor, null);
-            return visitor.build();
-        } catch (ParseException e) {
-            throw new DatabaseException(e.getMessage());
-        }
+        CharStream charStream = CharStreams.fromString(s);
+        RookieSQLLexer lexer = new RookieSQLLexer(charStream);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        RookieSQLParser parser = new RookieSQLParser(tokens);
+        parser.removeErrorListeners();
+        parser.addErrorListener(new BaseErrorListener() {
+            @Override
+            public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                                    int line, int charPositionInLine, String msg,
+                                    RecognitionException e) {
+                throw new DatabaseException("line " + line + ":" + charPositionInLine + " " + msg);
+            }
+        });
+        return ExpressionBuilder.build(parser.expression());
     }
 
     // Order of operations /////////////////////////////////////////////////////

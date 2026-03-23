@@ -1,16 +1,15 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
-import edu.berkeley.cs186.database.cli.parser.ASTIdentifier;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.DropTableStmtContext;
 
 import java.io.PrintStream;
 
 class DropTableStatementVisitor extends StatementVisitor {
     public String tableName;
 
-    @Override
-    public void visit(ASTIdentifier node, Object data) {
-        this.tableName = (String) node.jjtGetValue();
+    public DropTableStatementVisitor(DropTableStmtContext ctx) {
+        this.tableName = ctx.identifier().getText();
     }
 
     @Override
@@ -28,5 +27,4 @@ class DropTableStatementVisitor extends StatementVisitor {
     public StatementType getType() {
         return StatementType.DROP_TABLE;
     }
-
 }

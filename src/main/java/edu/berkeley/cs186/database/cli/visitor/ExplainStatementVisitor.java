@@ -1,7 +1,7 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
-import edu.berkeley.cs186.database.cli.parser.ASTSelectStatement;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ExplainStmtContext;
 import edu.berkeley.cs186.database.query.QueryPlan;
 
 import java.io.PrintStream;
@@ -9,11 +9,8 @@ import java.io.PrintStream;
 class ExplainStatementVisitor extends StatementVisitor {
     StatementVisitor visitor;
 
-    @Override
-    public void visit(ASTSelectStatement node, Object data) {
-        SelectStatementVisitor visitor = new SelectStatementVisitor();
-        node.jjtAccept(visitor, data);
-        this.visitor = visitor;
+    public ExplainStatementVisitor(ExplainStmtContext ctx) {
+        this.visitor = new SelectStatementVisitor(ctx.selectStmt());
     }
 
     @Override
@@ -27,5 +24,4 @@ class ExplainStatementVisitor extends StatementVisitor {
     public StatementType getType() {
         return StatementType.EXPLAIN;
     }
-
 }

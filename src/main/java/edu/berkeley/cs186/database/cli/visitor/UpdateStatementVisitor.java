@@ -1,12 +1,11 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
-import edu.berkeley.cs186.database.cli.parser.ASTColumnName;
-import edu.berkeley.cs186.database.cli.parser.ASTExpression;
-import edu.berkeley.cs186.database.cli.parser.ASTIdentifier;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ExpressionContext;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.UpdateStmtContext;
 import edu.berkeley.cs186.database.databox.BoolDataBox;
 import edu.berkeley.cs186.database.query.expr.Expression;
-import edu.berkeley.cs186.database.query.expr.ExpressionVisitor;
+import edu.berkeley.cs186.database.query.expr.ExpressionBuilder;
 import edu.berkeley.cs186.database.table.Schema;
 
 import java.io.PrintStream;
@@ -14,39 +13,28 @@ import java.io.PrintStream;
 public class UpdateStatementVisitor extends StatementVisitor {
     public String tableName;
     public String updateColumnName;
-    public ASTExpression expr;
-    public ASTExpression cond;
+    private ExpressionContext exprCtx;
+    private ExpressionContext condCtx;
 
-    @Override
-    public void visit(ASTIdentifier node, Object data) {
-        this.tableName = (String) node.jjtGetValue();
-    }
-
-    @Override
-    public void visit(ASTColumnName node, Object data) {
-        this.updateColumnName = (String) node.jjtGetValue();
-    }
-
-    @Override
-    public void visit(ASTExpression node, Object data) {
-        if (this.expr != null) this.cond = node;
-        else this.expr = node;
+    public UpdateStatementVisitor(UpdateStmtContext ctx) {
+        this.tableName = ctx.identifier().getText();
+        this.updateColumnName = ctx.columnName().getText();
+        this.exprCtx = ctx.expression(0);
+        if (ctx.expression().size() > 1) {
+            this.condCtx = ctx.expression(1);
+        }
     }
 
     @Override
     public void execute(Transaction transaction, PrintStream out) {
         try {
             Schema schema = transaction.getSchema(tableName);
-            ExpressionVisitor ev = new ExpressionVisitor();
-            this.expr.jjtAccept(ev, schema);
-            Expression exprFunc = ev.build();
+            Expression exprFunc = ExpressionBuilder.build(exprCtx);
             Expression condFunc;
-            if (this.cond == null) {
+            if (this.condCtx == null) {
                 condFunc = Expression.literal(new BoolDataBox(true));
             } else {
-                ExpressionVisitor condEv = new ExpressionVisitor();
-                this.cond.jjtAccept(condEv, schema);
-                condFunc = condEv.build();
+                condFunc = ExpressionBuilder.build(condCtx);
             }
             exprFunc.setSchema(schema);
             condFunc.setSchema(schema);

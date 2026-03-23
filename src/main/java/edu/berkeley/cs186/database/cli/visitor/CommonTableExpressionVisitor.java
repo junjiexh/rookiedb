@@ -2,9 +2,9 @@ package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.TransactionContext;
-import edu.berkeley.cs186.database.cli.parser.ASTIdentifier;
-import edu.berkeley.cs186.database.cli.parser.ASTSelectStatement;
-import edu.berkeley.cs186.database.cli.parser.RookieParserDefaultVisitor;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ColumnNameContext;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.CommonTableExpressionContext;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.SelectStmtContext;
 import edu.berkeley.cs186.database.common.Pair;
 import edu.berkeley.cs186.database.query.QueryPlan;
 import edu.berkeley.cs186.database.table.Record;
@@ -14,17 +14,24 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-class CommonTableExpressionVisitor extends RookieParserDefaultVisitor {
+class CommonTableExpressionVisitor {
     String name = null;
     String alias = null;
     List<String> columns = new ArrayList<>();
-    ASTSelectStatement child = null;
+    SelectStmtContext selectStmtCtx = null;
     SelectStatementVisitor visitor = null;
 
+    public CommonTableExpressionVisitor(CommonTableExpressionContext ctx) {
+        this.name = ctx.identifier().getText();
+        for (ColumnNameContext colName : ctx.columnName()) {
+            this.columns.add(colName.getText());
+        }
+        this.selectStmtCtx = ctx.selectStmt();
+    }
+
     public String createTable(Transaction transaction, List<Pair<String, String>> outerContext) {
-        this.visitor = new SelectStatementVisitor();
+        this.visitor = new SelectStatementVisitor(this.selectStmtCtx);
         this.visitor.setContext(new ArrayList<>(outerContext));
-        this.child.jjtAccept(this.visitor, null);
         QueryPlan p = this.visitor.getQueryPlan(transaction).get();
         p.execute();
         Schema schema = p.getFinalOperator().getSchema();
@@ -48,16 +55,5 @@ class CommonTableExpressionVisitor extends RookieParserDefaultVisitor {
         while (records.hasNext()) {
             transaction.insert(this.alias, records.next());
         }
-    }
-
-    @Override
-    public void visit(ASTIdentifier node, Object data) {
-        if (this.name == null) this.name = (String) node.jjtGetValue();
-        else this.columns.add((String) node.jjtGetValue());
-    }
-
-    @Override
-    public void visit (ASTSelectStatement node, Object data) {
-        this.child = node;
     }
 }

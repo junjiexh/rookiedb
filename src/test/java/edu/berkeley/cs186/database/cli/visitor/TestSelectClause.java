@@ -4,12 +4,12 @@ import edu.berkeley.cs186.database.Database;
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.categories.Proj99Tests;
 import edu.berkeley.cs186.database.categories.SystemTests;
-import edu.berkeley.cs186.database.cli.parser.ASTSQLStatementList;
-import edu.berkeley.cs186.database.cli.parser.ParseException;
-import edu.berkeley.cs186.database.cli.parser.RookieParser;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLLexer;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
 import edu.berkeley.cs186.database.query.QueryPlan;
 import edu.berkeley.cs186.database.table.Record;
 import edu.berkeley.cs186.database.table.Schema;
+import org.antlr.v4.runtime.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -17,7 +17,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -58,15 +57,12 @@ public class TestSelectClause {
     }
 
     public SelectStatementVisitor parse(String input) {
-        RookieParser p = new RookieParser(new ByteArrayInputStream(input.getBytes()));
-        ASTSQLStatementList node;
-        try {
-            node = p.sql_stmt_list();
-        } catch (ParseException e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        CharStream charStream = CharStreams.fromString(input);
+        RookieSQLLexer lexer = new RookieSQLLexer(charStream);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        RookieSQLParser parser = new RookieSQLParser(tokens);
         StatementListVisitor visitor = new StatementListVisitor(db, System.out);
-        node.jjtAccept(visitor, null);
+        visitor.visit(parser.sqlStmtList());
         return (SelectStatementVisitor) visitor.statementVisitors.get(0);
     }
 

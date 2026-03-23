@@ -2,14 +2,15 @@ package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Database;
 import edu.berkeley.cs186.database.Transaction;
-import edu.berkeley.cs186.database.cli.parser.*;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLBaseVisitor;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class StatementListVisitor extends RookieParserDefaultVisitor {
+public class StatementListVisitor extends RookieSQLBaseVisitor<Void> {
     private Database database;
     private PrintStream out;
     public List<StatementVisitor> statementVisitors;
@@ -83,147 +84,42 @@ public class StatementListVisitor extends RookieParserDefaultVisitor {
         return currTransaction;
     }
 
-    /**
-     * ROLLBACK
-     */
     @Override
-    public void visit(ASTRollbackStatement node, Object data) {
-        RollbackStatementVisitor visitor = new RollbackStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * SAVEPOINT
-     */
-    @Override
-    public void visit(ASTSavepointStatement node, Object data) {
-        SavepointStatementVisitor visitor = new SavepointStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * RELEASE SAVEPOINT
-     */
-    @Override
-    public void visit(ASTReleaseStatement node, Object data) {
-        ReleaseStatementVisitor visitor = new ReleaseStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * COMMIT
-     */
-    @Override
-    public void visit(ASTCommitStatement node, Object data) {
-        CommitStatementVisitor visitor = new CommitStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * BEGIN
-     */
-    @Override
-    public void visit(ASTBeginStatement node, Object data) {
-        BeginStatementVisitor visitor = new BeginStatementVisitor();
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * SELECT
-     */
-    @Override
-    public void visit(ASTSelectStatement node, Object data) {
-        try {
-            SelectStatementVisitor visitor = new SelectStatementVisitor();
-            node.childrenAccept(visitor, null);
-            this.statementVisitors.add(visitor);
-        } catch (UnsupportedOperationException e) {
-            this.out.println("Failed to execute SELECT");
-            this.out.println(e.getMessage());
+    public Void visitSqlStmt(RookieSQLParser.SqlStmtContext ctx) {
+        if (ctx.beginStmt() != null) {
+            this.statementVisitors.add(new BeginStatementVisitor());
+        } else if (ctx.commitStmt() != null) {
+            this.statementVisitors.add(new CommitStatementVisitor());
+        } else if (ctx.rollbackStmt() != null) {
+            this.statementVisitors.add(new RollbackStatementVisitor(ctx.rollbackStmt()));
+        } else if (ctx.savepointStmt() != null) {
+            this.statementVisitors.add(new SavepointStatementVisitor(ctx.savepointStmt()));
+        } else if (ctx.releaseStmt() != null) {
+            this.statementVisitors.add(new ReleaseStatementVisitor(ctx.releaseStmt()));
+        } else if (ctx.selectStmt() != null) {
+            try {
+                this.statementVisitors.add(new SelectStatementVisitor(ctx.selectStmt()));
+            } catch (UnsupportedOperationException e) {
+                this.out.println("Failed to execute SELECT");
+                this.out.println(e.getMessage());
+            }
+        } else if (ctx.createTableStmt() != null) {
+            this.statementVisitors.add(new CreateTableStatementVisitor(ctx.createTableStmt()));
+        } else if (ctx.dropTableStmt() != null) {
+            this.statementVisitors.add(new DropTableStatementVisitor(ctx.dropTableStmt()));
+        } else if (ctx.createIndexStmt() != null) {
+            this.statementVisitors.add(new CreateIndexStatementVisitor(ctx.createIndexStmt()));
+        } else if (ctx.dropIndexStmt() != null) {
+            this.statementVisitors.add(new DropIndexStatementVisitor(ctx.dropIndexStmt()));
+        } else if (ctx.insertStmt() != null) {
+            this.statementVisitors.add(new InsertStatementVisitor(ctx.insertStmt()));
+        } else if (ctx.deleteStmt() != null) {
+            this.statementVisitors.add(new DeleteStatementVisitor(ctx.deleteStmt()));
+        } else if (ctx.updateStmt() != null) {
+            this.statementVisitors.add(new UpdateStatementVisitor(ctx.updateStmt()));
+        } else if (ctx.explainStmt() != null) {
+            this.statementVisitors.add(new ExplainStatementVisitor(ctx.explainStmt()));
         }
-    }
-
-    /**
-     * CREATE TABLE
-     */
-    @Override
-    public void visit(ASTCreateTableStatement node, Object data) {
-        CreateTableStatementVisitor visitor = new CreateTableStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * DROP TABLE
-     */
-    @Override
-    public void visit(ASTDropTableStatement node, Object data) {
-        DropTableStatementVisitor visitor = new DropTableStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * CREATE INDEX
-     */
-    @Override
-    public void visit(ASTCreateIndexStatement node, Object data) {
-        CreateIndexStatementVisitor visitor = new CreateIndexStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * DROP INDEX
-     */
-    @Override
-    public void visit(ASTDropIndexStatement node, Object data) {
-        DropIndexStatementVisitor visitor = new DropIndexStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * INSERT
-     */
-    @Override
-    public void visit(ASTInsertStatement node, Object data) {
-        InsertStatementVisitor visitor = new InsertStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * DELETE
-     */
-    @Override
-    public void visit(ASTDeleteStatement node, Object data) {
-        DeleteStatementVisitor visitor = new DeleteStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * UPDATE
-     */
-    @Override
-    public void visit(ASTUpdateStatement node, Object data) {
-        UpdateStatementVisitor visitor = new UpdateStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
-    }
-
-    /**
-     * EXPLAIN
-     */
-    @Override
-    public void visit(ASTExplainStatement node, Object data) {
-        ExplainStatementVisitor visitor = new ExplainStatementVisitor();
-        node.childrenAccept(visitor, null);
-        this.statementVisitors.add(visitor);
+        return null;
     }
 }

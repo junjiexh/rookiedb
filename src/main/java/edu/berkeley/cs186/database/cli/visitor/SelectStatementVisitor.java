@@ -2,13 +2,13 @@ package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.PrettyPrinter;
-import edu.berkeley.cs186.database.cli.parser.*;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.*;
 import edu.berkeley.cs186.database.common.Pair;
 import edu.berkeley.cs186.database.common.PredicateOperator;
 import edu.berkeley.cs186.database.databox.DataBox;
 import edu.berkeley.cs186.database.query.QueryPlan;
 import edu.berkeley.cs186.database.query.expr.Expression;
-import edu.berkeley.cs186.database.query.expr.ExpressionVisitor;
+import edu.berkeley.cs186.database.query.expr.ExpressionBuilder;
 import edu.berkeley.cs186.database.table.Record;
 import edu.berkeley.cs186.database.table.Schema;
 
@@ -35,6 +35,79 @@ class SelectStatementVisitor extends StatementVisitor {
     String orderColumnName;
     int limit = -1;
     int offset = 0;
+
+    public SelectStatementVisitor(SelectStmtContext ctx) {
+        // WITH clause
+        for (CommonTableExpressionContext cteCtx : ctx.commonTableExpression()) {
+            withExpressions.add(new CommonTableExpressionVisitor(cteCtx));
+        }
+
+        // SELECT clause
+        for (SelectColumnContext selCol : ctx.selectClause().selectColumn()) {
+            if (selCol instanceof SelectColumnStarContext) {
+                selectColumns.add("*");
+                selectFunctions.add(null);
+                selectAliases.add(null);
+            } else if (selCol instanceof SelectColumnTableStarContext tableStarCtx) {
+                String tableName = tableStarCtx.IDENTIFIER().getText();
+                selectColumns.add(tableName + ".*");
+                selectFunctions.add(null);
+                selectAliases.add(null);
+            } else if (selCol instanceof SelectColumnExprContext exprCtx) {
+                Expression exp = ExpressionBuilder.build(exprCtx.expression());
+                selectFunctions.add(exp);
+                selectColumns.add(exp.toString());
+                if (exprCtx.K_AS() != null) {
+                    selectAliases.add(exprCtx.identifier().getText());
+                } else {
+                    selectAliases.add(null);
+                }
+            }
+        }
+
+        // FROM clause
+        AliasedTableNameContext firstTable = ctx.fromClause().aliasedTableName();
+        processAliasedTable(firstTable);
+
+        for (JoinedTableContext joinCtx : ctx.fromClause().joinedTable()) {
+            joinedTableLeftCols.add(joinCtx.columnName(0).getText());
+            joinedTableRightCols.add(joinCtx.columnName(1).getText());
+            processAliasedTable(joinCtx.aliasedTableName());
+        }
+
+        // WHERE clause
+        for (ColumnValueComparisonContext cvcCtx : ctx.columnValueComparison()) {
+            ColumnValueComparisonVisitor cvcVisitor = new ColumnValueComparisonVisitor(cvcCtx);
+            predicateColumns.add(cvcVisitor.columnName);
+            predicateOperators.add(cvcVisitor.op);
+            predicateValues.add(cvcVisitor.value);
+        }
+
+        // GROUP BY clause
+        for (ColumnNameContext colName : ctx.columnName()) {
+            groupByColumns.add(colName.getText());
+        }
+
+        // ORDER BY clause
+        if (ctx.orderClause() != null) {
+            orderColumnName = ctx.orderClause().columnName().getText();
+        }
+
+        // LIMIT clause
+        if (ctx.limitClause() != null) {
+            limit = Integer.parseInt(ctx.limitClause().integerLiteral().numericLiteral().getText());
+        }
+    }
+
+    private void processAliasedTable(AliasedTableNameContext atn) {
+        String name = atn.identifier(0).getText();
+        tableNames.add(name);
+        if (atn.identifier().size() > 1) {
+            tableAliases.add(atn.identifier(1).getText());
+        } else {
+            tableAliases.add(name);
+        }
+    }
 
     @Override
     public void execute(Transaction transaction, PrintStream out) {
@@ -131,80 +204,6 @@ class SelectStatementVisitor extends StatementVisitor {
 
     public void setContext(List<Pair<String, String>> context) {
         this.contextAliases = context;
-    }
-
-    @Override
-    public void visit(ASTColumnName node, Object data) {
-        this.groupByColumns.add((String) node.jjtGetValue());
-    }
-
-    @Override
-    public void visit(ASTCommonTableExpression node, Object data) {
-        CommonTableExpressionVisitor visitor = new CommonTableExpressionVisitor();
-        node.jjtAccept(visitor, data);
-        this.withExpressions.add(visitor);
-    }
-
-    @Override
-    public void visit(ASTSelectColumn node, Object data) {
-        if (node.jjtGetValue().toString().startsWith("<>")) super.defaultVisit(node, data);
-
-        String s = (String) node.jjtGetValue();
-        if (s == null) s = "";
-        if (s.toUpperCase().contains(" AS ")) {
-            int o = s.toUpperCase().indexOf(" AS ");
-            this.selectAliases.add(s.substring(o + 4));
-            s = s.substring(0, o);
-        } else {
-            this.selectAliases.add(null);
-        }
-        if (node.jjtGetValue().toString().startsWith("<>")) return;
-        this.selectFunctions.add(null);
-        this.selectColumns.add(s.trim());
-    }
-
-    @Override
-    public void visit(ASTExpression node, Object data) {
-        ExpressionVisitor visitor = new ExpressionVisitor();
-        node.jjtAccept(visitor, data);
-        Expression exp = visitor.build();
-        this.selectFunctions.add(exp);
-        this.selectColumns.add(exp.toString());
-    }
-
-    @Override
-    public void visit(ASTJoinedTable node, Object data) {
-        String[] names = (String[]) node.jjtGetValue();
-        this.joinedTableLeftCols.add(names[0]);
-        this.joinedTableRightCols.add(names[1]);
-        node.jjtGetChild(0).jjtAccept(this, data);
-    }
-
-    @Override
-    public void visit(ASTAliasedTableName node, Object data) {
-        String[] names = (String[]) node.jjtGetValue();
-        this.tableNames.add(names[0]);
-        if(names[1] != null) this.tableAliases.add(names[1]);
-        else this.tableAliases.add(names[0]);
-    }
-
-    @Override
-    public void visit(ASTColumnValueComparison node, Object data) {
-        ColumnValueComparisonVisitor visitor = new ColumnValueComparisonVisitor();
-        node.jjtAccept(visitor, node);
-        predicateColumns.add(visitor.columnName);
-        predicateOperators.add(visitor.op);
-        predicateValues.add(visitor.value);
-    }
-
-    @Override
-    public void visit(ASTLimitClause node, Object data) {
-        this.limit = (int) node.jjtGetValue();
-    }
-
-    @Override
-    public void visit(ASTOrderClause node, Object data) {
-        this.orderColumnName = (String) node.jjtGetValue();
     }
 
     @Override

@@ -1,16 +1,15 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
-import edu.berkeley.cs186.database.cli.parser.ASTReleaseStatement;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ReleaseStmtContext;
 
 import java.io.PrintStream;
 
 class ReleaseStatementVisitor extends StatementVisitor {
     public String savepointName;
 
-    @Override
-    public void visit(ASTReleaseStatement node, Object data) {
-        this.savepointName = (String) node.jjtGetValue();
+    public ReleaseStatementVisitor(ReleaseStmtContext ctx) {
+        this.savepointName = ctx.identifier().getText();
     }
 
     @Override
@@ -28,5 +27,4 @@ class ReleaseStatementVisitor extends StatementVisitor {
     public StatementType getType() {
         return StatementType.RELEASE_SAVEPOINT;
     }
-
 }

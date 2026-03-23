@@ -1,10 +1,8 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.Transaction;
-import edu.berkeley.cs186.database.cli.parser.ASTColumnDef;
-import edu.berkeley.cs186.database.cli.parser.ASTIdentifier;
-import edu.berkeley.cs186.database.cli.parser.ASTSelectStatement;
-import edu.berkeley.cs186.database.cli.parser.Token;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ColumnDefContext;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.CreateTableStmtContext;
 import edu.berkeley.cs186.database.databox.Type;
 import edu.berkeley.cs186.database.query.QueryOperator;
 import edu.berkeley.cs186.database.query.QueryPlan;
@@ -22,66 +20,58 @@ class CreateTableStatementVisitor extends StatementVisitor {
     public Schema schema = new Schema();
     public SelectStatementVisitor selectStatementVisitor = null;
 
-    @Override
-    public void visit(ASTIdentifier node, Object data) {
-        this.tableName = (String) node.jjtGetValue();
-    }
-
-    @Override
-    public void visit(ASTSelectStatement node, Object data) {
-        selectStatementVisitor = new SelectStatementVisitor();
-        node.jjtAccept(selectStatementVisitor, data);
-    }
-
-    @Override
-    public void visit(ASTColumnDef node, Object data) {
-        Object[] components = (Object[]) node.jjtGetValue();
-        String fieldName = (String) components[0];
-        String fieldTypeStr = (String) components[1];
-        Token param = (Token) components[2];
-        Type fieldType = Type.intType();
-        switch(fieldTypeStr.toLowerCase()) {
-            case "int":;
-            case "integer":
-                fieldType = Type.intType();
-                break;
-            case "char":;
-            case "varchar":;
-            case "string":
-                if(param == null) {
-                    errorMessages.add(String.format("Missing length for %s(n).", fieldType));
-                    return;
+    public CreateTableStatementVisitor(CreateTableStmtContext ctx) {
+        this.tableName = ctx.identifier().getText();
+        if (ctx.selectStmt() != null) {
+            this.selectStatementVisitor = new SelectStatementVisitor(ctx.selectStmt());
+        } else {
+            for (ColumnDefContext colDef : ctx.columnDef()) {
+                String fieldName = colDef.identifier(0).getText();
+                String fieldTypeStr = colDef.identifier(1).getText();
+                String paramStr = colDef.NUMERIC_LITERAL() != null ? colDef.NUMERIC_LITERAL().getText() : null;
+                Type fieldType = Type.intType();
+                switch (fieldTypeStr.toLowerCase()) {
+                    case "int":
+                    case "integer":
+                        fieldType = Type.intType();
+                        break;
+                    case "char":
+                    case "varchar":
+                    case "string":
+                        if (paramStr == null) {
+                            errorMessages.add(String.format("Missing length for %s(n).", fieldType));
+                            continue;
+                        }
+                        if (paramStr.indexOf('.') >= 0) {
+                            errorMessages.add(String.format("Length of %s(n) must be integer, not `%s`.", fieldType, paramStr));
+                            continue;
+                        }
+                        fieldType = Type.stringType(Integer.parseInt(paramStr));
+                        break;
+                    case "float":
+                        fieldType = Type.floatType();
+                        break;
+                    case "long":
+                        fieldType = Type.longType();
+                        break;
+                    case "bool":
+                    case "boolean":
+                        fieldType = Type.boolType();
+                        break;
+                    default:
+                        assert false : String.format(
+                                "Invalid field type \"%s\"",
+                                fieldTypeStr
+                        );
                 }
-                String s = param.image;
-                if (s.indexOf('.') >= 0) {
-                    errorMessages.add(String.format("Length of %s(n) must be integer, not `%s`.", fieldType, s));
-                    return;
-                }
-                fieldType = Type.stringType(Integer.parseInt(s));
-                break;
-            case "float":
-                fieldType = Type.floatType();
-                break;
-            case "long":
-                fieldType = Type.longType();
-                break;
-            case "bool":;
-            case "boolean":
-                fieldType = Type.boolType();
-                break;
-            default:
-                assert false: String.format(
-                    "Invalid field type \"%s\"",
-                    fieldTypeStr
-                );
+                schema.add(fieldName, fieldType);
+            }
         }
-        schema.add(fieldName, fieldType);
     }
 
     public void execute(Transaction transaction, PrintStream out) {
-        // transaction
         if (this.errorMessages.size() > 0) {
-            for(String msg: errorMessages) {
+            for (String msg : errorMessages) {
                 out.println(msg);
             }
             out.println("Failed to execute CREATE TABLE.");

@@ -1,19 +1,16 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
-import edu.berkeley.cs186.database.cli.parser.ASTIdentifier;
-import edu.berkeley.cs186.database.databox.DataBox;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.RollbackStmtContext;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 class RollbackStatementVisitor extends StatementVisitor {
     public String savepointName;
-    public List<DataBox> values = new ArrayList<DataBox>();
 
-    @Override
-    public void visit(ASTIdentifier node, Object data) {
-        this.savepointName = (String) node.jjtGetValue();
+    public RollbackStatementVisitor(RollbackStmtContext ctx) {
+        if (ctx.identifier() != null) {
+            this.savepointName = ctx.identifier().getText();
+        }
     }
 
     @Override

@@ -1,32 +1,26 @@
 package edu.berkeley.cs186.database.cli.visitor;
 
 import edu.berkeley.cs186.database.cli.PrettyPrinter;
-import edu.berkeley.cs186.database.cli.parser.ASTColumnName;
-import edu.berkeley.cs186.database.cli.parser.ASTComparisonOperator;
-import edu.berkeley.cs186.database.cli.parser.ASTLiteral;
-import edu.berkeley.cs186.database.cli.parser.RookieParserDefaultVisitor;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ColumnValueComparisonContext;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.CvcColumnFirstContext;
+import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.CvcLiteralFirstContext;
 import edu.berkeley.cs186.database.common.PredicateOperator;
 import edu.berkeley.cs186.database.databox.DataBox;
 
-class ColumnValueComparisonVisitor extends RookieParserDefaultVisitor {
+class ColumnValueComparisonVisitor {
     PredicateOperator op;
     String columnName;
     DataBox value;
 
-    @Override
-    public void visit(ASTLiteral node, Object data) {
-        this.value = PrettyPrinter.parseLiteral((String) node.jjtGetValue());
-    }
-
-    @Override
-    public void visit(ASTColumnName node, Object data) {
-        this.columnName = (String) node.jjtGetValue();
-        // keep things in format columnName <= value
-        if (this.op != null) this.op = op.reverse();
-    }
-
-    @Override
-    public void visit(ASTComparisonOperator node, Object data) {
-        this.op = PredicateOperator.fromSymbol((String) node.jjtGetValue());
+    public ColumnValueComparisonVisitor(ColumnValueComparisonContext ctx) {
+        if (ctx instanceof CvcColumnFirstContext colFirst) {
+            this.columnName = colFirst.columnName().getText();
+            this.op = PredicateOperator.fromSymbol(colFirst.comparisonOperator().getText());
+            this.value = PrettyPrinter.parseLiteral(colFirst.literal().getText());
+        } else if (ctx instanceof CvcLiteralFirstContext litFirst) {
+            this.columnName = litFirst.columnName().getText();
+            this.op = PredicateOperator.fromSymbol(litFirst.comparisonOperator().getText()).reverse();
+            this.value = PrettyPrinter.parseLiteral(litFirst.literal().getText());
+        }
     }
 }
