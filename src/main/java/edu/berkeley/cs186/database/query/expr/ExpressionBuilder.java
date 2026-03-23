@@ -15,12 +15,6 @@ public class ExpressionBuilder extends RookieSQLBaseVisitor<Expression> {
     }
 
     @Override
-    // todo: this rewriting is not necessary
-    public Expression visitExpression(ExpressionContext ctx) {
-        return visit(ctx.orExpr());
-    }
-
-    @Override
     public Expression visitOrExpr(OrExprContext ctx) {
         List<AndExprContext> children = ctx.andExpr();
         if (children.size() == 1) return visit(children.get(0));
