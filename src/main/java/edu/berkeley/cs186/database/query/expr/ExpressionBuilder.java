@@ -5,7 +5,6 @@ import edu.berkeley.cs186.database.cli.parser.RookieSQLBaseVisitor;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.*;
 import edu.berkeley.cs186.database.databox.DataBox;
 import edu.berkeley.cs186.database.databox.IntDataBox;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +15,7 @@ public class ExpressionBuilder extends RookieSQLBaseVisitor<Expression> {
     }
 
     @Override
+    // todo: this rewriting is not necessary
     public Expression visitExpression(ExpressionContext ctx) {
         return visit(ctx.orExpr());
     }
@@ -58,7 +58,11 @@ public class ExpressionBuilder extends RookieSQLBaseVisitor<Expression> {
         if (operands.size() == 1) return visit(operands.get(0));
         Expression prev = visit(operands.get(0));
         for (int i = 0; i < operators.size(); i++) {
-            prev = Expression.compare(operators.get(i).getText(), prev, visit(operands.get(i + 1)));
+            prev = Expression.compare(
+                operators.get(i).getText(),
+                prev,
+                visit(operands.get(i + 1))
+            );
         }
         return prev;
     }
@@ -82,7 +86,8 @@ public class ExpressionBuilder extends RookieSQLBaseVisitor<Expression> {
     @Override
     public Expression visitMultiplicativeExpr(MultiplicativeExprContext ctx) {
         List<PrimaryExprContext> operands = ctx.primaryExpr();
-        List<MultiplicativeOperatorContext> operators = ctx.multiplicativeOperator();
+        List<MultiplicativeOperatorContext> operators =
+            ctx.multiplicativeOperator();
         if (operands.size() == 1) return visit(operands.get(0));
         List<Character> ops = new ArrayList<>();
         for (MultiplicativeOperatorContext op : operators) {
@@ -143,7 +148,9 @@ public class ExpressionBuilder extends RookieSQLBaseVisitor<Expression> {
             if (agg != null) return agg;
         }
 
-        if (operands.size() == 1 || functionName.toUpperCase().equals("COUNT")) {
+        if (
+            operands.size() == 1 || functionName.toUpperCase().equals("COUNT")
+        ) {
             Expression child;
             if (operands.size() == 1) child = operands.get(0);
             else child = Expression.literal(new IntDataBox(0));
@@ -154,7 +161,11 @@ public class ExpressionBuilder extends RookieSQLBaseVisitor<Expression> {
         Expression reg = Expression.function(functionName, children);
         if (reg != null) return reg;
         throw new UnsupportedOperationException(
-            "Unknown function `" + functionName + "` (with " + operands.size() + " argument(s))"
+            "Unknown function `" +
+                functionName +
+                "` (with " +
+                operands.size() +
+                " argument(s))"
         );
     }
 }
