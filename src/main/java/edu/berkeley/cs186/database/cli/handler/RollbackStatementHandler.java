@@ -1,13 +1,13 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.RollbackStmtContext;
 
 import java.util.Optional;
 
-class RollbackStatementVisitor extends StatementVisitor {
+class RollbackStatementHandler extends StatementHandler {
     public String savepointName;
 
-    public RollbackStatementVisitor(RollbackStmtContext ctx) {
+    public RollbackStatementHandler(RollbackStmtContext ctx) {
         if (ctx.identifier() != null) {
             this.savepointName = ctx.identifier().getText();
         }

@@ -1,14 +1,14 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.SavepointStmtContext;
 
 import java.io.PrintStream;
 
-class SavepointStatementVisitor extends StatementVisitor {
+class SavepointStatementHandler extends StatementHandler {
     public String savepointName;
 
-    public SavepointStatementVisitor(SavepointStmtContext ctx) {
+    public SavepointStatementHandler(SavepointStmtContext ctx) {
         this.savepointName = ctx.identifier().getText();
     }
 

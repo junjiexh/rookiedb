@@ -1,11 +1,11 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Database;
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLLexer;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
-import edu.berkeley.cs186.database.cli.visitor.StatementListVisitor;
-import edu.berkeley.cs186.database.cli.visitor.StatementType;
+import edu.berkeley.cs186.database.cli.handler.StatementListHandler;
+import edu.berkeley.cs186.database.cli.handler.StatementType;
 import org.antlr.v4.runtime.*;
 import org.junit.After;
 import org.junit.Before;
@@ -48,59 +48,59 @@ public class TestStatementList {
         this.db.close();
     }
 
-    public StatementListVisitor parse(String input) {
+    public StatementListHandler parse(String input) {
         CharStream charStream = CharStreams.fromString(input);
         RookieSQLLexer lexer = new RookieSQLLexer(charStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         RookieSQLParser parser = new RookieSQLParser(tokens);
-        StatementListVisitor visitor = new StatementListVisitor(db, System.out);
-        visitor.visit(parser.sqlStmtList());
-        return visitor;
+        StatementListHandler handler = new StatementListHandler(db, System.out);
+        handler.visit(parser.sqlStmtList());
+        return handler;
     }
 
     @Test
     public void testSimpleQuery() {
-        StatementListVisitor visitor = parse(
+        StatementListHandler handler = parse(
                 "SELECT * FROM Students;"
         );
-        assertEquals(1, visitor.statementVisitors.size());
-        assertEquals(StatementType.SELECT, visitor.statementVisitors.get(0).getType());
+        assertEquals(1, handler.statementHandlers.size());
+        assertEquals(StatementType.SELECT, handler.statementHandlers.get(0).getType());
     }
 
     @Test
     public void testSemicolonsA() {
-        StatementListVisitor visitor = parse(
+        StatementListHandler handler = parse(
                 ";;;SELECT * FROM Students;"
         );
-        assertEquals(1, visitor.statementVisitors.size());
-        assertEquals(StatementType.SELECT, visitor.statementVisitors.get(0).getType());
+        assertEquals(1, handler.statementHandlers.size());
+        assertEquals(StatementType.SELECT, handler.statementHandlers.get(0).getType());
     }
 
     @Test
     public void testSemicolonsB() {
-        StatementListVisitor visitor = parse(
+        StatementListHandler handler = parse(
                 "SELECT * FROM Students;;;;;;;"
         );
-        assertEquals(1, visitor.statementVisitors.size());
-        assertEquals(StatementType.SELECT, visitor.statementVisitors.get(0).getType());
+        assertEquals(1, handler.statementHandlers.size());
+        assertEquals(StatementType.SELECT, handler.statementHandlers.get(0).getType());
     }
 
     @Test
     public void testSemicolonsC() {
-        StatementListVisitor visitor = parse(
+        StatementListHandler handler = parse(
                 ";;; ;; ; SELECT * FROM Students;;\n;;\t;;;"
         );
-        assertEquals(1, visitor.statementVisitors.size());
-        assertEquals(StatementType.SELECT, visitor.statementVisitors.get(0).getType());
+        assertEquals(1, handler.statementHandlers.size());
+        assertEquals(StatementType.SELECT, handler.statementHandlers.get(0).getType());
     }
 
     @Test
     public void testSemicolonsD() {
-        StatementListVisitor visitor = parse(
+        StatementListHandler handler = parse(
                 ";  ;; ;;\t; SELECT * FROM Students;;\n\n;;;EXPLAIN SELECT * FROM Students;;"
         );
-        assertEquals(2, visitor.statementVisitors.size());
-        assertEquals(StatementType.SELECT, visitor.statementVisitors.get(0).getType());
-        assertEquals(StatementType.EXPLAIN, visitor.statementVisitors.get(1).getType());
+        assertEquals(2, handler.statementHandlers.size());
+        assertEquals(StatementType.SELECT, handler.statementHandlers.get(0).getType());
+        assertEquals(StatementType.EXPLAIN, handler.statementHandlers.get(1).getType());
     }
 }

@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.PrettyPrinter;
@@ -12,11 +12,11 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-class InsertStatementVisitor extends StatementVisitor {
+class InsertStatementHandler extends StatementHandler {
     public String tableName;
     public List<Record> values = new ArrayList<>();
 
-    public InsertStatementVisitor(InsertStmtContext ctx) {
+    public InsertStatementHandler(InsertStmtContext ctx) {
         this.tableName = ctx.identifier().getText();
         for (InsertValuesContext ivCtx : ctx.insertValues()) {
             List<DataBox> currValues = new ArrayList<>();

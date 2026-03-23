@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ExplainStmtContext;
@@ -6,11 +6,11 @@ import edu.berkeley.cs186.database.query.QueryPlan;
 
 import java.io.PrintStream;
 
-class ExplainStatementVisitor extends StatementVisitor {
-    StatementVisitor visitor;
+class ExplainStatementHandler extends StatementHandler {
+    StatementHandler visitor;
 
-    public ExplainStatementVisitor(ExplainStmtContext ctx) {
-        this.visitor = new SelectStatementVisitor(ctx.selectStmt());
+    public ExplainStatementHandler(ExplainStmtContext ctx) {
+        this.visitor = new SelectStatementHandler(ctx.selectStmt());
     }
 
     @Override

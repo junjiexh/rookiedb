@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ExpressionContext;
@@ -10,13 +10,13 @@ import edu.berkeley.cs186.database.table.Schema;
 
 import java.io.PrintStream;
 
-public class UpdateStatementVisitor extends StatementVisitor {
+public class UpdateStatementHandler extends StatementHandler {
     public String tableName;
     public String updateColumnName;
     private ExpressionContext exprCtx;
     private ExpressionContext condCtx;
 
-    public UpdateStatementVisitor(UpdateStmtContext ctx) {
+    public UpdateStatementHandler(UpdateStmtContext ctx) {
         this.tableName = ctx.identifier().getText();
         this.updateColumnName = ctx.columnName().getText();
         this.exprCtx = ctx.expression(0);

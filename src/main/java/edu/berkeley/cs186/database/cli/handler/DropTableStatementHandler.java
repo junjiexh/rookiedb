@@ -1,14 +1,14 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.DropTableStmtContext;
 
 import java.io.PrintStream;
 
-class DropTableStatementVisitor extends StatementVisitor {
+class DropTableStatementHandler extends StatementHandler {
     public String tableName;
 
-    public DropTableStatementVisitor(DropTableStmtContext ctx) {
+    public DropTableStatementHandler(DropTableStmtContext ctx) {
         this.tableName = ctx.identifier().getText();
     }
 

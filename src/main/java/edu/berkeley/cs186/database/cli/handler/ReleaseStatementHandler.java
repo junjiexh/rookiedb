@@ -1,14 +1,14 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ReleaseStmtContext;
 
 import java.io.PrintStream;
 
-class ReleaseStatementVisitor extends StatementVisitor {
+class ReleaseStatementHandler extends StatementHandler {
     public String savepointName;
 
-    public ReleaseStatementVisitor(ReleaseStmtContext ctx) {
+    public ReleaseStatementHandler(ReleaseStmtContext ctx) {
         this.savepointName = ctx.identifier().getText();
     }
 

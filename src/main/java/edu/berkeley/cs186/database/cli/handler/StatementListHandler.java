@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Database;
 import edu.berkeley.cs186.database.Transaction;
@@ -10,20 +10,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class StatementListVisitor extends RookieSQLBaseVisitor<Void> {
+public class StatementListHandler extends RookieSQLBaseVisitor<Void> {
     private Database database;
     private PrintStream out;
-    public List<StatementVisitor> statementVisitors;
+    public List<StatementHandler> statementHandlers;
 
-    public StatementListVisitor(Database database, PrintStream out) {
+    public StatementListHandler(Database database, PrintStream out) {
         this.database = database;
         this.out = out;
-        this.statementVisitors = new ArrayList<>();
+        this.statementHandlers = new ArrayList<>();
     }
 
     public Transaction execute(Transaction currTransaction) {
-        for (StatementVisitor visitor: this.statementVisitors) {
-            switch(visitor.getType()) {
+        for (StatementHandler handler: this.statementHandlers) {
+            switch(handler.getType()) {
                 case BEGIN:
                     if (currTransaction != null) {
                         this.out.println("WARNING: Transaction already in progress. Ignoring.");
@@ -45,7 +45,7 @@ public class StatementListVisitor extends RookieSQLBaseVisitor<Void> {
                     if (currTransaction == null) {
                         this.out.println("WARNING: No transaction in progress");
                     } else {
-                        Optional<String> savepointName = visitor.getSavepointName();
+                        Optional<String> savepointName = handler.getSavepointName();
                         if(savepointName.isPresent()) {
                             try {
                                 currTransaction.rollbackToSavepoint(savepointName.get());
@@ -64,7 +64,7 @@ public class StatementListVisitor extends RookieSQLBaseVisitor<Void> {
                 default:
                     if (currTransaction == null) {
                         try (Transaction tmp = database.beginTransaction()) {
-                            visitor.execute(tmp, out);
+                            handler.execute(tmp, out);
                             tmp.commit();
                         } catch (Exception e) {
                             e.printStackTrace(this.out);
@@ -72,7 +72,7 @@ public class StatementListVisitor extends RookieSQLBaseVisitor<Void> {
                         }
                     } else {
                         try {
-                            visitor.execute(currTransaction, out);
+                            handler.execute(currTransaction, out);
                         } catch (Exception e) {
                             e.printStackTrace(this.out);
                             this.out.println("Operation failed.");
@@ -87,38 +87,38 @@ public class StatementListVisitor extends RookieSQLBaseVisitor<Void> {
     @Override
     public Void visitSqlStmt(RookieSQLParser.SqlStmtContext ctx) {
         if (ctx.beginStmt() != null) {
-            this.statementVisitors.add(new BeginStatementVisitor());
+            this.statementHandlers.add(new BeginStatementHandler());
         } else if (ctx.commitStmt() != null) {
-            this.statementVisitors.add(new CommitStatementVisitor());
+            this.statementHandlers.add(new CommitStatementHandler());
         } else if (ctx.rollbackStmt() != null) {
-            this.statementVisitors.add(new RollbackStatementVisitor(ctx.rollbackStmt()));
+            this.statementHandlers.add(new RollbackStatementHandler(ctx.rollbackStmt()));
         } else if (ctx.savepointStmt() != null) {
-            this.statementVisitors.add(new SavepointStatementVisitor(ctx.savepointStmt()));
+            this.statementHandlers.add(new SavepointStatementHandler(ctx.savepointStmt()));
         } else if (ctx.releaseStmt() != null) {
-            this.statementVisitors.add(new ReleaseStatementVisitor(ctx.releaseStmt()));
+            this.statementHandlers.add(new ReleaseStatementHandler(ctx.releaseStmt()));
         } else if (ctx.selectStmt() != null) {
             try {
-                this.statementVisitors.add(new SelectStatementVisitor(ctx.selectStmt()));
+                this.statementHandlers.add(new SelectStatementHandler(ctx.selectStmt()));
             } catch (UnsupportedOperationException e) {
                 this.out.println("Failed to execute SELECT");
                 this.out.println(e.getMessage());
             }
         } else if (ctx.createTableStmt() != null) {
-            this.statementVisitors.add(new CreateTableStatementVisitor(ctx.createTableStmt()));
+            this.statementHandlers.add(new CreateTableStatementHandler(ctx.createTableStmt()));
         } else if (ctx.dropTableStmt() != null) {
-            this.statementVisitors.add(new DropTableStatementVisitor(ctx.dropTableStmt()));
+            this.statementHandlers.add(new DropTableStatementHandler(ctx.dropTableStmt()));
         } else if (ctx.createIndexStmt() != null) {
-            this.statementVisitors.add(new CreateIndexStatementVisitor(ctx.createIndexStmt()));
+            this.statementHandlers.add(new CreateIndexStatementHandler(ctx.createIndexStmt()));
         } else if (ctx.dropIndexStmt() != null) {
-            this.statementVisitors.add(new DropIndexStatementVisitor(ctx.dropIndexStmt()));
+            this.statementHandlers.add(new DropIndexStatementHandler(ctx.dropIndexStmt()));
         } else if (ctx.insertStmt() != null) {
-            this.statementVisitors.add(new InsertStatementVisitor(ctx.insertStmt()));
+            this.statementHandlers.add(new InsertStatementHandler(ctx.insertStmt()));
         } else if (ctx.deleteStmt() != null) {
-            this.statementVisitors.add(new DeleteStatementVisitor(ctx.deleteStmt()));
+            this.statementHandlers.add(new DeleteStatementHandler(ctx.deleteStmt()));
         } else if (ctx.updateStmt() != null) {
-            this.statementVisitors.add(new UpdateStatementVisitor(ctx.updateStmt()));
+            this.statementHandlers.add(new UpdateStatementHandler(ctx.updateStmt()));
         } else if (ctx.explainStmt() != null) {
-            this.statementVisitors.add(new ExplainStatementVisitor(ctx.explainStmt()));
+            this.statementHandlers.add(new ExplainStatementHandler(ctx.explainStmt()));
         }
         return null;
     }

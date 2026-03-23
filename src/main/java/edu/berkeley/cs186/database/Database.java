@@ -2,7 +2,7 @@ package edu.berkeley.cs186.database;
 
 import edu.berkeley.cs186.database.cli.parser.RookieSQLLexer;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
-import edu.berkeley.cs186.database.cli.visitor.ExecutableStatementVisitor;
+import edu.berkeley.cs186.database.cli.handler.ExecutableStatementHandler;
 import org.antlr.v4.runtime.*;
 import edu.berkeley.cs186.database.common.ByteBuffer;
 import edu.berkeley.cs186.database.common.Pair;
@@ -1038,8 +1038,8 @@ public class Database implements AutoCloseable {
                 }
             });
             RookieSQLParser.ExecutableStmtContext stmt = parser.executableStmt();
-            ExecutableStatementVisitor visitor = new ExecutableStatementVisitor(stmt);
-            Optional<QueryPlan> qp = visitor.execute(this, System.out);
+            ExecutableStatementHandler handler = new ExecutableStatementHandler(stmt);
+            Optional<QueryPlan> qp = handler.execute(this, System.out);
             return qp;
         }
 

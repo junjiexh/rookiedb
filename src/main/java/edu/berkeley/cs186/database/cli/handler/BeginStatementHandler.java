@@ -1,9 +1,9 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 /**
  * Purely symbolic class
  */
-class BeginStatementVisitor extends StatementVisitor {
+class BeginStatementHandler extends StatementHandler {
     public StatementType getType() {
         return StatementType.BEGIN;
     }

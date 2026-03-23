@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.TransactionContext;
@@ -14,14 +14,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-class CommonTableExpressionVisitor {
+class CommonTableExpressionHandler {
     String name = null;
     String alias = null;
     List<String> columns = new ArrayList<>();
     SelectStmtContext selectStmtCtx = null;
-    SelectStatementVisitor visitor = null;
+    SelectStatementHandler visitor = null;
 
-    public CommonTableExpressionVisitor(CommonTableExpressionContext ctx) {
+    public CommonTableExpressionHandler(CommonTableExpressionContext ctx) {
         this.name = ctx.identifier().getText();
         for (ColumnNameContext colName : ctx.columnName()) {
             this.columns.add(colName.getText());
@@ -30,7 +30,7 @@ class CommonTableExpressionVisitor {
     }
 
     public String createTable(Transaction transaction, List<Pair<String, String>> outerContext) {
-        this.visitor = new SelectStatementVisitor(this.selectStmtCtx);
+        this.visitor = new SelectStatementHandler(this.selectStmtCtx);
         this.visitor.setContext(new ArrayList<>(outerContext));
         QueryPlan p = this.visitor.getQueryPlan(transaction).get();
         p.execute();

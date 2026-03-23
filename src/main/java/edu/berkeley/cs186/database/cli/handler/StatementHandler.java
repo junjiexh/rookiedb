@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.query.QueryPlan;
@@ -6,7 +6,7 @@ import edu.berkeley.cs186.database.query.QueryPlan;
 import java.io.PrintStream;
 import java.util.Optional;
 
-abstract class StatementVisitor {
+abstract class StatementHandler {
     public void execute(Transaction transaction, PrintStream out) {
         throw new UnsupportedOperationException("Statement is not executable.");
     }

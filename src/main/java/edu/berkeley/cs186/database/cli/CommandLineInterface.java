@@ -6,7 +6,7 @@ import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.TransactionContext;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLLexer;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser;
-import edu.berkeley.cs186.database.cli.visitor.StatementListVisitor;
+import edu.berkeley.cs186.database.cli.handler.StatementListHandler;
 import org.antlr.v4.runtime.*;
 import edu.berkeley.cs186.database.concurrency.LockManager;
 import edu.berkeley.cs186.database.memory.ClockEvictionPolicy;
@@ -115,10 +115,10 @@ public class CommandLineInterface {
                 this.out.println("Parser exception: " + e.getMessage());
                 continue;
             }
-            StatementListVisitor visitor = new StatementListVisitor(db, this.out);
+            StatementListHandler handler = new StatementListHandler(db, this.out);
             try {
-                visitor.visit(tree);
-                currTransaction = visitor.execute(currTransaction);
+                handler.visit(tree);
+                currTransaction = handler.execute(currTransaction);
             } catch (DatabaseException e) {
                 this.out.println("Database exception: " + e.getMessage());
             }

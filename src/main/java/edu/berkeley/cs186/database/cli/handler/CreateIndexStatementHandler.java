@@ -1,15 +1,15 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.CreateIndexStmtContext;
 
 import java.io.PrintStream;
 
-class CreateIndexStatementVisitor extends StatementVisitor {
+class CreateIndexStatementHandler extends StatementHandler {
     public String tableName;
     public String columnName;
 
-    public CreateIndexStatementVisitor(CreateIndexStmtContext ctx) {
+    public CreateIndexStatementHandler(CreateIndexStmtContext ctx) {
         this.tableName = ctx.identifier().getText();
         this.columnName = ctx.columnName().getText();
     }

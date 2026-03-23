@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Database;
 import edu.berkeley.cs186.database.Transaction;
@@ -56,19 +56,19 @@ public class TestSelectClause {
         this.db.close();
     }
 
-    public SelectStatementVisitor parse(String input) {
+    public SelectStatementHandler parse(String input) {
         CharStream charStream = CharStreams.fromString(input);
         RookieSQLLexer lexer = new RookieSQLLexer(charStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         RookieSQLParser parser = new RookieSQLParser(tokens);
-        StatementListVisitor visitor = new StatementListVisitor(db, System.out);
-        visitor.visit(parser.sqlStmtList());
-        return (SelectStatementVisitor) visitor.statementVisitors.get(0);
+        StatementListHandler handler = new StatementListHandler(db, System.out);
+        handler.visit(parser.sqlStmtList());
+        return (SelectStatementHandler) handler.statementHandlers.get(0);
     }
 
     @Test
     public void testSimpleSelect() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -86,7 +86,7 @@ public class TestSelectClause {
 
     @Test
     public void testMultiColumnSelect() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid, gpa, major FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -104,7 +104,7 @@ public class TestSelectClause {
 
     @Test
     public void testAsteriskSelect() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT * FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -122,7 +122,7 @@ public class TestSelectClause {
 
     @Test
     public void testTableAsteriskSelect() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT Students.* FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -140,7 +140,7 @@ public class TestSelectClause {
 
     @Test
     public void testAsteriskColumnSelect() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid, *, sid FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -160,7 +160,7 @@ public class TestSelectClause {
 
     @Test
     public void testColumnAliasSelect() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid as coolAlias FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -178,7 +178,7 @@ public class TestSelectClause {
 
     @Test
     public void testSimpleArithmetic() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid + sid as sum FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -196,7 +196,7 @@ public class TestSelectClause {
 
     @Test
     public void testArithmeticMultiply() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid * sid + sid as A, sid + sid * sid as B FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -215,7 +215,7 @@ public class TestSelectClause {
 
     @Test
     public void testMultiColumnArithmetic() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT gpa * sid + gpa / sid / 186 as expr, gpa FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -234,7 +234,7 @@ public class TestSelectClause {
 
     @Test
     public void testArithmeticOrderOfOperations() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid * 6 / (8 + sid * 1) as expr FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -252,7 +252,7 @@ public class TestSelectClause {
 
     @Test
     public void testSimpleFunction() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT NEGATE(sid) as fcall FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -270,7 +270,7 @@ public class TestSelectClause {
 
     @Test
     public void testExpressionInFunction() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT NEGATE(sid * sid + 186) as fcall FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -288,7 +288,7 @@ public class TestSelectClause {
 
     @Test
     public void testFunctionInExpression() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT sid*NEGATE(sid)*sid as fcall FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -306,7 +306,7 @@ public class TestSelectClause {
 
     @Test
     public void testNestedFunction() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT NEGATE(NEGATE(sid)) as fcall FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -324,7 +324,7 @@ public class TestSelectClause {
 
     @Test
     public void testMultiArgumentFunction() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT major, REPLACE(UPPER(major), 'I', 'III') as fcall FROM Students;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -343,7 +343,7 @@ public class TestSelectClause {
 
     @Test
     public void testAliasedAsteriskA() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT A.* FROM Students AS A;"
         );
         try (Transaction t = db.beginTransaction()) {
@@ -356,7 +356,7 @@ public class TestSelectClause {
 
     @Test
     public void testAliasedAsteriskB() {
-        SelectStatementVisitor v = parse(
+        SelectStatementHandler v = parse(
                 "SELECT Students.* FROM Students AS B;"
         );
         try (Transaction t = db.beginTransaction()) {

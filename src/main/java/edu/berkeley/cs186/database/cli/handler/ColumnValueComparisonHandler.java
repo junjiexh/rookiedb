@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.cli.PrettyPrinter;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ColumnValueComparisonContext;
@@ -7,12 +7,12 @@ import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.CvcLiteralFirstCon
 import edu.berkeley.cs186.database.common.PredicateOperator;
 import edu.berkeley.cs186.database.databox.DataBox;
 
-class ColumnValueComparisonVisitor {
+class ColumnValueComparisonHandler {
     PredicateOperator op;
     String columnName;
     DataBox value;
 
-    public ColumnValueComparisonVisitor(ColumnValueComparisonContext ctx) {
+    public ColumnValueComparisonHandler(ColumnValueComparisonContext ctx) {
         if (ctx instanceof CvcColumnFirstContext colFirst) {
             this.columnName = colFirst.columnName().getText();
             this.op = PredicateOperator.fromSymbol(colFirst.comparisonOperator().getText());

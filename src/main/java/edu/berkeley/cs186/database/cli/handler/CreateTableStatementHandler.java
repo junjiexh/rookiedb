@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.ColumnDefContext;
@@ -14,16 +14,16 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-class CreateTableStatementVisitor extends StatementVisitor {
+class CreateTableStatementHandler extends StatementHandler {
     public String tableName;
     public List<String> errorMessages = new ArrayList<>();
     public Schema schema = new Schema();
-    public SelectStatementVisitor selectStatementVisitor = null;
+    public SelectStatementHandler selectStatementHandler = null;
 
-    public CreateTableStatementVisitor(CreateTableStmtContext ctx) {
+    public CreateTableStatementHandler(CreateTableStmtContext ctx) {
         this.tableName = ctx.identifier().getText();
         if (ctx.selectStmt() != null) {
-            this.selectStatementVisitor = new SelectStatementVisitor(ctx.selectStmt());
+            this.selectStatementHandler = new SelectStatementHandler(ctx.selectStmt());
         } else {
             for (ColumnDefContext colDef : ctx.columnDef()) {
                 String fieldName = colDef.identifier(0).getText();
@@ -76,8 +76,8 @@ class CreateTableStatementVisitor extends StatementVisitor {
             }
             out.println("Failed to execute CREATE TABLE.");
         } else {
-            if (selectStatementVisitor != null) {
-                QueryPlan p = selectStatementVisitor.getQueryPlan(transaction).get();
+            if (selectStatementHandler != null) {
+                QueryPlan p = selectStatementHandler.getQueryPlan(transaction).get();
                 p.execute();
                 QueryOperator op = p.getFinalOperator();
                 Schema s = op.getSchema();

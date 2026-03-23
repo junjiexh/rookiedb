@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.PrettyPrinter;
@@ -18,7 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-class SelectStatementVisitor extends StatementVisitor {
+class SelectStatementHandler extends StatementHandler {
     List<String> selectColumns = new ArrayList<>();
     List<String> selectAliases = new ArrayList<>();
     List<Expression> selectFunctions = new ArrayList<>();
@@ -31,15 +31,15 @@ class SelectStatementVisitor extends StatementVisitor {
     List<DataBox> predicateValues = new ArrayList<>();
     List<String> groupByColumns = new ArrayList<>();
     List<Pair<String, String>> contextAliases = new ArrayList<>();
-    List<CommonTableExpressionVisitor> withExpressions = new ArrayList<>();
+    List<CommonTableExpressionHandler> withExpressions = new ArrayList<>();
     String orderColumnName;
     int limit = -1;
     int offset = 0;
 
-    public SelectStatementVisitor(SelectStmtContext ctx) {
+    public SelectStatementHandler(SelectStmtContext ctx) {
         // WITH clause
         for (CommonTableExpressionContext cteCtx : ctx.commonTableExpression()) {
-            withExpressions.add(new CommonTableExpressionVisitor(cteCtx));
+            withExpressions.add(new CommonTableExpressionHandler(cteCtx));
         }
 
         // SELECT clause
@@ -77,10 +77,10 @@ class SelectStatementVisitor extends StatementVisitor {
 
         // WHERE clause
         for (ColumnValueComparisonContext cvcCtx : ctx.columnValueComparison()) {
-            ColumnValueComparisonVisitor cvcVisitor = new ColumnValueComparisonVisitor(cvcCtx);
-            predicateColumns.add(cvcVisitor.columnName);
-            predicateOperators.add(cvcVisitor.op);
-            predicateValues.add(cvcVisitor.value);
+            ColumnValueComparisonHandler cvcHandler = new ColumnValueComparisonHandler(cvcCtx);
+            predicateColumns.add(cvcHandler.columnName);
+            predicateOperators.add(cvcHandler.op);
+            predicateValues.add(cvcHandler.value);
         }
 
         // GROUP BY clause
@@ -119,9 +119,9 @@ class SelectStatementVisitor extends StatementVisitor {
     @Override
     public Optional<QueryPlan> getQueryPlan(Transaction transaction) {
         List<Pair<String, String>> currentAliases = new ArrayList<>(contextAliases);
-        for (CommonTableExpressionVisitor visitor: this.withExpressions) {
-            String tempTableName = visitor.createTable(transaction, currentAliases);
-            currentAliases.add(new Pair<>(tempTableName, visitor.name));
+        for (CommonTableExpressionHandler cteHandler: this.withExpressions) {
+            String tempTableName = cteHandler.createTable(transaction, currentAliases);
+            currentAliases.add(new Pair<>(tempTableName, cteHandler.name));
         }
 
         QueryPlan query = transaction.query(tableNames.get(0), tableAliases.get(0));
@@ -196,8 +196,8 @@ class SelectStatementVisitor extends StatementVisitor {
             query.sort(orderColumnName);
         }
         query.limit(limit, offset);
-        for (CommonTableExpressionVisitor visitor: this.withExpressions) {
-            visitor.populateTable(transaction);
+        for (CommonTableExpressionHandler cteHandler: this.withExpressions) {
+            cteHandler.populateTable(transaction);
         }
         return Optional.of(query);
     }

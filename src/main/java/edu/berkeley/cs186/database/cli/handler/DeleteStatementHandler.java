@@ -1,4 +1,4 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.DeleteStmtContext;
@@ -9,11 +9,11 @@ import edu.berkeley.cs186.database.table.Schema;
 
 import java.io.PrintStream;
 
-class DeleteStatementVisitor extends StatementVisitor {
+class DeleteStatementHandler extends StatementHandler {
     public String tableName;
     private ExpressionContext exprCtx;
 
-    public DeleteStatementVisitor(DeleteStmtContext ctx) {
+    public DeleteStatementHandler(DeleteStmtContext ctx) {
         this.tableName = ctx.identifier().getText();
         this.exprCtx = ctx.expression();
     }

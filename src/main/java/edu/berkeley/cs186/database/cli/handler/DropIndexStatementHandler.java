@@ -1,15 +1,15 @@
-package edu.berkeley.cs186.database.cli.visitor;
+package edu.berkeley.cs186.database.cli.handler;
 
 import edu.berkeley.cs186.database.Transaction;
 import edu.berkeley.cs186.database.cli.parser.RookieSQLParser.DropIndexStmtContext;
 
 import java.io.PrintStream;
 
-class DropIndexStatementVisitor extends StatementVisitor {
+class DropIndexStatementHandler extends StatementHandler {
     public String tableName;
     public String columnName;
 
-    public DropIndexStatementVisitor(DropIndexStmtContext ctx) {
+    public DropIndexStatementHandler(DropIndexStmtContext ctx) {
         this.tableName = ctx.identifier().getText();
         this.columnName = ctx.columnName().getText();
     }
