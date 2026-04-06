@@ -69,19 +69,19 @@ public class ProjectOperator extends QueryOperator {
         if (!hasAgg) return;
 
         for (int i = 0; i < expressions.size(); i++) {
+            if (expressions.get(i).hasAgg()) continue;
+
             Set<Integer> dependencyIndices = new HashSet<>();
             for (String colName: expressions.get(i).getDependencies()) {
                 dependencyIndices.add(this.sourceSchema.findField(colName));
             }
-            if (!expressions.get(i).hasAgg()) {
-                dependencyIndices.removeAll(groupByIndices);
-                if (dependencyIndices.size() != 0) {
-                    int any = dependencyIndices.iterator().next();
-                    throw new UnsupportedOperationException(
-                            "Non aggregate expression `" + columns.get(i) +
-                                    "` refers to ungrouped field `" + sourceSchema.getFieldName(any) + "`"
-                    );
-                }
+            dependencyIndices.removeAll(groupByIndices);
+            if (dependencyIndices.size() != 0) {
+                int any = dependencyIndices.iterator().next();
+                throw new UnsupportedOperationException(
+                        "Non aggregate expression `" + columns.get(i) +
+                                "` refers to ungrouped field `" + sourceSchema.getFieldName(any) + "`"
+                );
             }
         }
     }
