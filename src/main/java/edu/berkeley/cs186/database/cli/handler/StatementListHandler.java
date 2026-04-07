@@ -85,41 +85,91 @@ public class StatementListHandler extends RookieSQLBaseVisitor<Void> {
     }
 
     @Override
-    public Void visitSqlStmt(RookieSQLParser.SqlStmtContext ctx) {
-        if (ctx.beginStmt() != null) {
-            this.statementHandlers.add(new BeginStatementHandler());
-        } else if (ctx.commitStmt() != null) {
-            this.statementHandlers.add(new CommitStatementHandler());
-        } else if (ctx.rollbackStmt() != null) {
-            this.statementHandlers.add(new RollbackStatementHandler(ctx.rollbackStmt()));
-        } else if (ctx.savepointStmt() != null) {
-            this.statementHandlers.add(new SavepointStatementHandler(ctx.savepointStmt()));
-        } else if (ctx.releaseStmt() != null) {
-            this.statementHandlers.add(new ReleaseStatementHandler(ctx.releaseStmt()));
-        } else if (ctx.selectStmt() != null) {
-            try {
-                this.statementHandlers.add(new SelectStatementHandler(ctx.selectStmt()));
-            } catch (UnsupportedOperationException e) {
-                this.out.println("Failed to execute SELECT");
-                this.out.println(e.getMessage());
-            }
-        } else if (ctx.createTableStmt() != null) {
-            this.statementHandlers.add(new CreateTableStatementHandler(ctx.createTableStmt()));
-        } else if (ctx.dropTableStmt() != null) {
-            this.statementHandlers.add(new DropTableStatementHandler(ctx.dropTableStmt()));
-        } else if (ctx.createIndexStmt() != null) {
-            this.statementHandlers.add(new CreateIndexStatementHandler(ctx.createIndexStmt()));
-        } else if (ctx.dropIndexStmt() != null) {
-            this.statementHandlers.add(new DropIndexStatementHandler(ctx.dropIndexStmt()));
-        } else if (ctx.insertStmt() != null) {
-            this.statementHandlers.add(new InsertStatementHandler(ctx.insertStmt()));
-        } else if (ctx.deleteStmt() != null) {
-            this.statementHandlers.add(new DeleteStatementHandler(ctx.deleteStmt()));
-        } else if (ctx.updateStmt() != null) {
-            this.statementHandlers.add(new UpdateStatementHandler(ctx.updateStmt()));
-        } else if (ctx.explainStmt() != null) {
-            this.statementHandlers.add(new ExplainStatementHandler(ctx.explainStmt()));
+    public Void visitBeginStmt(RookieSQLParser.BeginStmtContext ctx) {
+        this.statementHandlers.add(new BeginStatementHandler());
+        return null;
+    }
+
+    @Override
+    public Void visitCommitStmt(RookieSQLParser.CommitStmtContext ctx) {
+        this.statementHandlers.add(new CommitStatementHandler());
+        return null;
+    }
+
+    @Override
+    public Void visitRollbackStmt(RookieSQLParser.RollbackStmtContext ctx) {
+        this.statementHandlers.add(new RollbackStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitSavepointStmt(RookieSQLParser.SavepointStmtContext ctx) {
+        this.statementHandlers.add(new SavepointStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitReleaseStmt(RookieSQLParser.ReleaseStmtContext ctx) {
+        this.statementHandlers.add(new ReleaseStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitSelectStmt(RookieSQLParser.SelectStmtContext ctx) {
+        try {
+            this.statementHandlers.add(new SelectStatementHandler(ctx));
+        } catch (UnsupportedOperationException e) {
+            this.out.println("Failed to execute SELECT");
+            this.out.println(e.getMessage());
         }
+        return null;
+    }
+
+    @Override
+    public Void visitCreateTableStmt(RookieSQLParser.CreateTableStmtContext ctx) {
+        this.statementHandlers.add(new CreateTableStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitDropTableStmt(RookieSQLParser.DropTableStmtContext ctx) {
+        this.statementHandlers.add(new DropTableStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitCreateIndexStmt(RookieSQLParser.CreateIndexStmtContext ctx) {
+        this.statementHandlers.add(new CreateIndexStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitDropIndexStmt(RookieSQLParser.DropIndexStmtContext ctx) {
+        this.statementHandlers.add(new DropIndexStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitInsertStmt(RookieSQLParser.InsertStmtContext ctx) {
+        this.statementHandlers.add(new InsertStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitDeleteStmt(RookieSQLParser.DeleteStmtContext ctx) {
+        this.statementHandlers.add(new DeleteStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitUpdateStmt(RookieSQLParser.UpdateStmtContext ctx) {
+        this.statementHandlers.add(new UpdateStatementHandler(ctx));
+        return null;
+    }
+
+    @Override
+    public Void visitExplainStmt(RookieSQLParser.ExplainStmtContext ctx) {
+        this.statementHandlers.add(new ExplainStatementHandler(ctx));
         return null;
     }
 }
