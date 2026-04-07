@@ -69,8 +69,11 @@ public class SortMergeOperator extends JoinOperator {
 
     @Override
     public int estimateIOCost() {
-        //does nothing
-        return 0;
+        int numLeftPages = getLeftSource().estimateStats().getNumPages();
+        int numRightPages = getRightSource().estimateStats().getNumPages();
+        return numLeftPages + numRightPages
+             + getLeftSource().estimateIOCost()
+             + getRightSource().estimateIOCost();
     }
 
     /**
