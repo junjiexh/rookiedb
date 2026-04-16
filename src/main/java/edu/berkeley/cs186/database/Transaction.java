@@ -66,6 +66,12 @@ public abstract class Transaction implements AutoCloseable {
     public abstract long getTransNum();
 
     /**
+     * @return MVCC xid allocated by the Database's TransactionManager.
+     *         Returns 0 for recovery transactions, which bypass MVCC.
+     */
+    public abstract long getXid();
+
+    /**
      * @return current status of transaction
      */
     public final Status getStatus() {

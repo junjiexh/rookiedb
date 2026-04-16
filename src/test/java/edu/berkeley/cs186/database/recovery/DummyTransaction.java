@@ -81,6 +81,12 @@ class DummyTransaction extends Transaction {
     }
 
     @Override
+    public long getXid() {
+        // DummyTransaction does not participate in MVCC; report the bypass sentinel.
+        return 0L;
+    }
+
+    @Override
     public void createTable(Schema s, String tableName) {}
 
     @Override

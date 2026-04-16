@@ -18,6 +18,7 @@ import edu.berkeley.cs186.database.io.DiskSpaceManagerImpl;
 import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.ClockEvictionPolicy;
 import edu.berkeley.cs186.database.memory.EvictionPolicy;
+import edu.berkeley.cs186.database.mvcc.TransactionManager;
 import edu.berkeley.cs186.database.query.QueryPlan;
 import edu.berkeley.cs186.database.query.SequentialScanOperator;
 import edu.berkeley.cs186.database.query.SortOperator;
@@ -93,6 +94,8 @@ public class Database implements AutoCloseable {
     // number of transactions created
     private long numTransactions;
 
+    // MVCC transaction manager (owns xid allocation + active/committed/aborted sets)
+    private final TransactionManager mvccTm = new TransactionManager();
     // lock manager
     private final LockManager lockManager;
     // disk space manager
@@ -310,6 +313,14 @@ public class Database implements AutoCloseable {
 
     public LockManager getLockManager() {
         return lockManager;
+    }
+
+    /**
+     * @return the MVCC TransactionManager shared by all transactions opened
+     *         through this Database.
+     */
+    public TransactionManager getTransactionManager() {
+        return mvccTm;
     }
 
     public DiskSpaceManager getDiskSpaceManager() {
@@ -583,7 +594,8 @@ public class Database implements AutoCloseable {
      * @return the new Transaction
      */
     public synchronized Transaction beginTransaction() {
-        TransactionImpl t = new TransactionImpl(this.numTransactions, false);
+        long xid = mvccTm.begin();
+        TransactionImpl t = new TransactionImpl(this.numTransactions, false, xid);
         activeTransactions.register();
         if (activeTransactions.isTerminated()) {
             activeTransactions = new Phaser(1);
@@ -603,7 +615,12 @@ public class Database implements AutoCloseable {
     private synchronized Transaction beginRecoveryTransaction(Long transactionNum) {
         this.numTransactions = Math.max(this.numTransactions, transactionNum + 1);
 
-        TransactionImpl t = new TransactionImpl(transactionNum, true);
+        // Recovery txns use xid 0 (the "no transaction" sentinel) to bypass MVCC.
+        // ARIES replay is physical byte-restoration, not a logical MVCC write, so
+        // consulting visibility during replay would be both wrong (state the TM
+        // needs isn't rebuilt yet) and unnecessary (undo removes uncommitted
+        // writes, so what lands on disk is by construction committed).
+        TransactionImpl t = new TransactionImpl(transactionNum, true, 0L);
         activeTransactions.register();
         if (activeTransactions.isTerminated()) {
             activeTransactions = new Phaser(1);
@@ -1013,11 +1030,13 @@ public class Database implements AutoCloseable {
 
     private class TransactionImpl extends Transaction {
         private long transNum;
+        private final long xid;
         private boolean recoveryTransaction;
         private TransactionContext transactionContext;
 
-        private TransactionImpl(long transNum, boolean recovery) {
+        private TransactionImpl(long transNum, boolean recovery, long xid) {
             this.transNum = transNum;
+            this.xid = xid;
             this.recoveryTransaction = recovery;
             this.transactionContext = new TransactionContextImpl(transNum, recovery);
         }
@@ -1047,12 +1066,18 @@ public class Database implements AutoCloseable {
         protected void startCommit() {
             transactionContext.deleteAllTempTables();
             recoveryManager.commit(transNum);
+            if (xid != 0L) {
+                mvccTm.commit(xid);
+            }
             this.cleanup();
         }
 
         @Override
         protected void startRollback() {
             recoveryManager.abort(transNum);
+            if (xid != 0L) {
+                mvccTm.abort(xid);
+            }
             this.cleanup();
         }
 
@@ -1073,6 +1098,11 @@ public class Database implements AutoCloseable {
         @Override
         public long getTransNum() {
             return transNum;
+        }
+
+        @Override
+        public long getXid() {
+            return xid;
         }
 
         @Override
