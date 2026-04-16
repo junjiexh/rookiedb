@@ -5,6 +5,7 @@ import edu.berkeley.cs186.database.categories.PublicTests;
 import edu.berkeley.cs186.database.databox.LongDataBox;
 import edu.berkeley.cs186.database.databox.Type;
 import edu.berkeley.cs186.database.table.Record;
+import edu.berkeley.cs186.database.table.RecordId;
 import edu.berkeley.cs186.database.table.Schema;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -29,62 +30,91 @@ public class TestMvccSchema {
         return new Schema().add("id", Type.intType()).add("name", Type.stringType(8));
     }
 
+    private Record phys(Object id, Object name, long xmin, long xmax, long next) {
+        return new Record(id, name, new LongDataBox(xmin), new LongDataBox(xmax),
+                          new LongDataBox(next));
+    }
+
     @Test
-    public void physicalSchemaAppendsXminXmax() {
+    public void physicalSchemaAppendsXminXmaxNext() {
         Schema phys = MvccSchema.physical(userSchema());
         List<String> names = phys.getFieldNames();
-        assertEquals(4, names.size());
+        assertEquals(5, names.size());
         assertEquals("id", names.get(0));
         assertEquals("name", names.get(1));
         assertEquals(MvccSchema.XMIN, names.get(2));
         assertEquals(MvccSchema.XMAX, names.get(3));
+        assertEquals(MvccSchema.NEXT, names.get(4));
         assertEquals(Type.longType(), phys.getFieldType(2));
         assertEquals(Type.longType(), phys.getFieldType(3));
+        assertEquals(Type.longType(), phys.getFieldType(4));
     }
 
     @Test
     public void attachVersionProducesRecordWithStamps() {
         Record user = new Record(42, "alice");
-        Record phys = MvccSchema.attachVersion(user, 7L, 0L);
-        assertEquals(4, phys.size());
-        assertEquals(42, phys.getValue(0).getInt());
-        assertEquals("alice", phys.getValue(1).getString().trim());
-        assertEquals(7L, phys.getValue(2).getLong());
-        assertEquals(0L, phys.getValue(3).getLong());
+        Record p = MvccSchema.attachVersion(user, 7L, 0L);
+        assertEquals(5, p.size());
+        assertEquals(42, p.getValue(0).getInt());
+        assertEquals("alice", p.getValue(1).getString().trim());
+        assertEquals(7L, MvccSchema.xmin(p));
+        assertEquals(0L, MvccSchema.xmax(p));
+        assertEquals(MvccSchema.NO_NEXT, MvccSchema.nextEncoded(p));
     }
 
     @Test
     public void userRecordStripsTrailingStamps() {
-        Record phys = new Record(42, "alice", new LongDataBox(7L), new LongDataBox(0L));
-        Record user = MvccSchema.userRecord(phys);
+        Record p = phys(42, "alice", 7L, 0L, MvccSchema.NO_NEXT);
+        Record user = MvccSchema.userRecord(p);
         assertEquals(2, user.size());
         assertEquals(42, user.getValue(0).getInt());
     }
 
     @Test
     public void xminAndXmaxExtractFromPhysical() {
-        Record phys = new Record(1, "x", new LongDataBox(42L), new LongDataBox(99L));
-        assertEquals(42L, MvccSchema.xmin(phys));
-        assertEquals(99L, MvccSchema.xmax(phys));
+        Record p = phys(1, "x", 42L, 99L, MvccSchema.NO_NEXT);
+        assertEquals(42L, MvccSchema.xmin(p));
+        assertEquals(99L, MvccSchema.xmax(p));
     }
 
     @Test
     public void withXmaxReturnsUpdatedPhysicalRecord() {
-        Record phys = new Record(1, "x", new LongDataBox(42L), new LongDataBox(0L));
-        Record updated = MvccSchema.withXmax(phys, 55L);
-        // Original untouched (records are value-like)
-        assertEquals(0L, MvccSchema.xmax(phys));
+        Record p = phys(1, "x", 42L, 0L, MvccSchema.NO_NEXT);
+        Record updated = MvccSchema.withXmax(p, 55L);
+        assertEquals(0L, MvccSchema.xmax(p));       // original immutable
         assertEquals(55L, MvccSchema.xmax(updated));
-        // User columns preserved
         assertEquals(1, updated.getValue(0).getInt());
         assertEquals(42L, MvccSchema.xmin(updated));
     }
 
     @Test
+    public void withNextReturnsUpdatedPhysicalRecord() {
+        Record p = phys(1, "x", 42L, 0L, MvccSchema.NO_NEXT);
+        RecordId nextRid = new RecordId(5L, (short) 7);
+        Record updated = MvccSchema.withNext(p, nextRid);
+        assertEquals(MvccSchema.NO_NEXT, MvccSchema.nextEncoded(p));
+        assertEquals(nextRid, MvccSchema.next(updated));
+        assertEquals(42L, MvccSchema.xmin(updated));
+        assertEquals(0L, MvccSchema.xmax(updated));
+    }
+
+    @Test
+    public void ridEncodeDecodeRoundTrip() {
+        RecordId rid = new RecordId(12345L, (short) 678);
+        long encoded = MvccSchema.encodeRid(rid);
+        assertEquals(rid, MvccSchema.decodeRid(encoded));
+    }
+
+    @Test
+    public void decodeRidReturnsNullForNoNext() {
+        assertNull(MvccSchema.decodeRid(MvccSchema.NO_NEXT));
+    }
+
+    @Test
     public void roundTripUserToPhysicalToUser() {
         Record original = new Record(7, "bob");
-        Record phys = MvccSchema.attachVersion(original, 100L, 0L);
-        Record back = MvccSchema.userRecord(phys);
+        Record p = MvccSchema.attachVersion(original, 100L, 0L);
+        Record back = MvccSchema.userRecord(p);
         assertEquals(original, back);
     }
 }

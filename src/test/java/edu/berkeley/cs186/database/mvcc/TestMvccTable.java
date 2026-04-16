@@ -2,6 +2,7 @@ package edu.berkeley.cs186.database.mvcc;
 
 import edu.berkeley.cs186.database.Database;
 import edu.berkeley.cs186.database.Transaction;
+import edu.berkeley.cs186.database.TransactionContext;
 import edu.berkeley.cs186.database.categories.ProjTests;
 import edu.berkeley.cs186.database.categories.PublicTests;
 import edu.berkeley.cs186.database.concurrency.LockManager;
@@ -57,6 +58,9 @@ public class TestMvccTable {
 
     @After
     public void tearDown() {
+        while (TransactionContext.getTransaction() != null) {
+            TransactionContext.unsetTransaction();
+        }
         if (db != null) db.close();
     }
 
