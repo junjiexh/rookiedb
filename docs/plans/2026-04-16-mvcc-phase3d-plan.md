@@ -254,6 +254,20 @@ limitation.
    Implement as scan-then-mutate using the existing visibility-filtered iterator
    plus per-row mvccUpdate/mvccDelete. Don't try to push predicates down yet.
 
+6. **Thread safety of `claimLiveTip + updateRecord`.**
+   The sequence is check-then-act: walk the chain to find the tip, then stamp
+   xmax. Without serialization two writers could both read xmax==0, both
+   stamp, and the second's `updateRecord` overwrites the first — chain
+   pointer corruption. Today RookieDB's 2PL X page lock serializes
+   `ctx.updateRecord`, so concurrent writers to the same page block rather
+   than race; FUW conflict detection becomes mostly defensive. Phase 3e
+   keeps X locks for writes (only S/IS reads are dropped), so this stays
+   safe. **If a future phase ever goes lock-free on writes**, add either:
+   - A short-duration page latch around `claimLiveTip + updateRecord`, OR
+   - CAS on the xmax slot (atomic compare-and-swap that retries on change)
+   PostgreSQL takes a page-level lightweight latch for the same reason
+   during HOT updates. Note this in 3e's plan if/when written.
+
 ---
 
 ## Verification when done
