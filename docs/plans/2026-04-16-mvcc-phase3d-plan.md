@@ -238,8 +238,25 @@ limitation.
 2. **Where does `TransactionManager` live?**
    On `Database`. One per Database. Rebuilt on `Database` construction.
    Recovery: replay log, then start TM with `nextXid = max(committed) + 1`.
-   For 3d we punt on persistence — TM state is in-memory only and a crash
-   means all in-flight txns abort (which is conservative-correct).
+   For 3d we punt on persistence — TM state is in-memory only. A crash
+   aborts all in-flight txns (conservative-correct for them), BUT there is
+   a real gap for already-committed pre-crash txns: their xids are
+   forgotten, so any `xmin` stamp left on disk will fail
+   `tm.isCommitted(xid)` and the row becomes invisible to post-recovery
+   readers. **MVCC is not crash-safe in 3d** — document this as a known
+   limitation and defer the fix to Phase 4.
+
+   **Fix sketch for Phase 4 (committed-floor trick).** ARIES undo
+   guarantees that every physical record remaining on disk after recovery
+   belongs to a committed txn (uncommitted writes are physically rolled
+   back). So after recovery, the TM can set
+   `committedFloor = nextXidAtStartup` and have `isCommitted(xid)` return
+   `true` for any `xid < committedFloor` without tracking them
+   individually. Runtime txns get xids `>= committedFloor` and are
+   tracked normally. Cheaper than persisting the full committed set in
+   the WAL. (Recovery txns themselves still use xid 0 to bypass MVCC
+   during replay, for the byte-level / circular-dependency reasons in
+   [the earlier note](#gotcha-line-142).)
 
 3. **What about the initialization transaction in `Database` constructor?**
    It creates `_metadata.tables` and `_metadata.indices`. Those tables should
@@ -322,7 +339,12 @@ limitation.
 
 - **Phase 3e:** Read path drops S/IS lock acquisition; rerun benchmark, expect
   Workload C to stop deadlocking. This is the headline win for the resume.
-- **Phase 4 (recovery):** persist `TransactionManager` state in the WAL.
+- **Phase 4 (recovery):** make MVCC crash-safe. Minimum viable fix is the
+  committed-floor trick described in Open Question 2 — after recovery,
+  treat all `xid < nextXidAtStartup` as committed, relying on ARIES undo
+  to guarantee on-disk xmin stamps belong to committed txns. Persisting
+  the full TM state in the WAL is a heavier alternative if finer-grained
+  tracking is needed later.
 - **Phase 5 (VACUUM):** background or manual reclamation of dead versions.
 
 The benchmark CSV (`results/benchmark.csv`) is the ground truth for "did MVCC
